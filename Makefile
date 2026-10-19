@@ -17,6 +17,7 @@ check: lint typecheck test
 
 corpus:
 	uv run python -m rootline.corpus.render
+	uv run python -m rootline.corpus.brownfield
 
 up:
 	docker compose up --build

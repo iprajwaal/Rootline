@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : Slow checkout while the cache was down</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Incidents</div>
+<h1 id="title-heading">Slow checkout while the cache was down</h1>
+<div class="page-metadata">Created by Omar Haddad, last modified on 2025-10-24</div>
+<div id="main-content" class="wiki-content">
+<h2>Summary</h2>
+<p>The cache pod was evicted during a node drain and did not come back on its own. orders-api fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for 22 minutes.</p>
+<h2>What happened</h2>
+<p>Checkout p95 latency rose from 250 ms to 2.8 s. orders-api logged &quot;redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused.&quot; The cache pod was stuck in Pending after a node drain.</p>
+<h2>Timeline</h2>
+<table>
+<tr><th>Time (UTC)</th><th>What</th><th>Who</th></tr>
+<tr><td>2025-10-21 02:10</td><td>Node drain started for a kernel upgrade. Planned maintenance.</td><td>Platform team</td></tr>
+<tr><td>2025-10-21 02:11</td><td>Cache pod evicted. orders-api logged connection refused errors for cache:6379. None.</td><td>Platform team</td></tr>
+<tr><td>2025-10-21 02:14</td><td>Alert OrdersApiHighLatency fired. On-call opened an incident.</td><td>SRE on-call</td></tr>
+<tr><td>2025-10-21 02:29</td><td>Cache pod found stuck in Pending, its volume bound to the drained node. Asked the platform on-call to bring the node back.</td><td>SRE on-call</td></tr>
+<tr><td>2025-10-21 02:33</td><td>Node back in the cluster. Restarted the cache statefulset.</td><td>Platform on-call</td></tr>
+<tr><td>2025-10-21 02:36</td><td>Latency back to normal. Closed the incident.</td><td>SRE on-call</td></tr>
+</table>
+<h2>Why it happened</h2>
+<ul>
+<li>The cache ran as a single pod with no PodDisruptionBudget, so a planned drain took it down.</li>
+<li>Its volume was bound to one node, so the pod could not move to another node.</li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li>Add a PodDisruptionBudget for the cache. (Platform team)</li>
+<li>Alert when redis-cli ping fails for 2 minutes. (SRE team)</li>
+<li>Write SOP-CACHE-001. (Omar Haddad)</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

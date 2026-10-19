@@ -1,0 +1,55 @@
+From: Priya Nair <priya.nair@shoplite.example>
+To: orders-eng@shoplite.example
+Subject: RE: RE: orders api outage from exhausted database connection pool
+Date: Wed, 04 Jun 2025 10:00:00 +0000
+Message-ID: <dd96bd46d21a329a@shoplite.example>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Thanks all. Writing down what we know so far, proper RCA to follow.
+
+What happened: For 38 minutes orders-api could not get database connections a=
+nd returned 503 on about 12% of checkout requests. A new sales report endpoin=
+t held connections while it ran slow queries.
+Impact: Partial outage of 38 minutes. About 4,100 orders were delayed and non=
+e were lost, because clients retried. No SLA breach. The monthly availability=
+ target stayed above 99.9%.
+
+Timeline (UTC):
+2025-06-03 08:55 orders-api 4.18 released with the new sales report endpoint.=
+ None at the time.
+2025-06-03 09:12 Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout e=
+rrors. On-call acknowledged and opened an incident channel.
+2025-06-03 09:24 20 of 20 pool connections in use per pod, most running the r=
+eport query. Asked the database on-call to review long running queries.
+2025-06-03 09:36 Checkout still failing. Raised DB_POOL_MAX to 50 on orders-a=
+pi.
+2025-06-03 09:50 Error rate back under 1%. Disabled the sales report endpoint=
+ with its feature flag.
+
+Root cause: The sales report query held pool connections for up to 90 seconds=
+ with no statement timeout. Reports and checkout shared one pool of 20 connec=
+tions per pod, so reports could starve checkout.
+Fix: Raised the pool limit from 20 to 50 to restore checkout, then disabled t=
+he sales report endpoint until its query was fixed.
+
+Follow ups:
+- Add an alert at 80% pool usage. (SRE team)
+- Set a 30 second statement timeout on report queries. (Orders team)
+- Write SOP-DB-001 for pool exhaustion. (Priya Nair)
+- Move reports to a read replica with its own pool. (Orders team)
+
+the primary db is at 10.20.30.40 if dns is acting up
+direct host is pg-primary.shop.internal, skip the proxy
+
+--
+Priya Nair
+Orders team
+
+On Wed, 04 Jun 2025, Tom Becker wrote:
+> Alert OrdersDbPoolExhausted fired, is anyone looking?
+> orders-api returned 503 on a share of checkout requests. Its logs
+> showed "psycopg_pool.PoolTimeout: couldn't get a connection after
+> 30.00 sec". Every pod had all 20 pool connections in use, and most of
+> them were running the same reporting query.

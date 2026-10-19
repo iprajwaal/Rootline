@@ -1,0 +1,31 @@
+fix consumer lag on the orders queue by scaling consumers
+(copied from the old wiki, owner: orders team, last checked 2026-05-19)
+
+Use this procedure when the OrderQueueConsumerLagHigh alert fires, or when worker logs show "consumer group orders-worker lag=... on topic orders exceeds threshold=10000".
+
+before you start: kubectl access to the shop namespace. The orders topic has 6 partitions. More than 6 consumers adds nothing.
+
+steps
+1) Check the consumer lag.
+   kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker
+   should see: Lag above 10000 on one or more partitions.
+2) Check worker memory before scaling.
+   kubectl -n shop top pod -l app=orders-worker
+   should see: Memory under 80% of the limit and no recent restarts. If a worker is near its limit or restarting, stop here and follow the orders-worker OOM runbook.
+3) Check the worker logs for slow payment calls.
+   kubectl -n shop logs deploy/orders-worker --since=15m
+   should see: No payment-gateway timeouts. If payment calls are slow, scaling helps little. Page the payments team on-call and continue.
+4) Scale the consumers.
+   kubectl -n shop scale deploy/orders-worker --replicas=4
+   should see: 4 worker pods running and every partition assigned.
+5) Check the lag again after five minutes.
+   kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker
+   should see: Lag is going down on every partition.
+
+to undo
+- Scale back to the normal size once lag is under 1000. kubectl -n shop scale deploy/orders-worker --replicas=2
+
+notes
+admin token for the queue ui: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5hcnkifQ.Y2FuYXJ5LXNpZw
+
+if this does not help: page the orders team lead if lag is still growing 15 minutes after step 4.

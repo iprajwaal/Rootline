@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : How to handle orders-api crash loops</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Incidents</div>
+<h1 id="title-heading">How to handle orders-api crash loops</h1>
+<div class="page-metadata">Created by Sara Kim, last modified on 2026-03-16</div>
+<div id="main-content" class="wiki-content">
+<h2>Summary</h2>
+<p>orders-api 5.2 was deployed with a config map that no longer had PAYMENT_GATEWAY_URL. The app exits on start when that variable is missing, so every pod crash looped and no orders could be placed for 17 minutes.</p>
+<h2>What happened</h2>
+<p>After the orders-api 5.2 deploy every pod went into CrashLoopBackOff. The logs showed &quot;config error: PAYMENT_GATEWAY_URL is not set&quot; just before each exit. No orders could be created.</p>
+<h2>Timeline</h2>
+<table>
+<tr><th>Time (UTC)</th><th>What</th><th>Who</th></tr>
+<tr><td>2026-03-12 16:40</td><td>orders-api 5.2 deploy started. None.</td><td>Release owner</td></tr>
+<tr><td>2026-03-12 16:42</td><td>Alert OrdersApiCrashLooping fired. On-call followed SOP-DEPLOY-001 and rolled back.</td><td>SRE on-call</td></tr>
+<tr><td>2026-03-12 16:45</td><td>The release owner, not knowing about the rollback, retried the 5.2 deploy. Pods crash looped again.</td><td>Release owner</td></tr>
+<tr><td>2026-03-12 16:47</td><td>On-call read the logs and found &quot;config error: PAYMENT_GATEWAY_URL is not set&quot;. Told the release owner to stop deploys.</td><td>SRE on-call</td></tr>
+<tr><td>2026-03-12 16:52</td><td>Rollout history showed the variable was dropped in the new revision. Confirmed the cause with the release owner.</td><td>SRE on-call</td></tr>
+<tr><td>2026-03-12 16:55</td><td>Rollback to 5.1 started. Ran kubectl -n shop rollout undo deploy/orders-api.</td><td>SRE on-call</td></tr>
+<tr><td>2026-03-12 16:59</td><td>Pods running and orders flowing again. Closed the incident. 5.2 was redeployed at 19:30 with the config map mounted.</td><td>Release owner</td></tr>
+</table>
+<h2>Why it happened</h2>
+<ul>
+<li>The deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start.</li>
+<li>Neither CI nor the readiness probe checked for required config, so the bad revision reached every pod.</li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li>Write SOP-DEPLOY-002 that reads the start up error before rolling back. (Sara Kim)</li>
+<li>Fail CI when a required config key is missing. (Orders team)</li>
+<li>Load config before the readiness probe reports ready. (Orders team)</li>
+<li>Post every rollback in the deploy channel. (SRE team)</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

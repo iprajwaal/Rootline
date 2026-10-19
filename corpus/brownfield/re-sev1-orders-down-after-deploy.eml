@@ -1,0 +1,54 @@
+From: Sara Kim <sara.kim@shoplite.example>
+To: orders-eng@shoplite.example
+Subject: RE: RE: orders api crash loop after deploy with missing config
+Date: Fri, 13 Mar 2026 10:00:00 +0000
+Message-ID: <6b9a460d73f246be@shoplite.example>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Thanks all. Writing down what we know so far, proper RCA to follow.
+
+What happened: orders-api 5.2 was deployed with a config map that no longer h=
+ad PAYMENT_GATEWAY_URL. The app exits on start when that variable is missing,=
+ so every pod crash looped and no orders could be placed for 17 minutes.
+Impact: Full outage of order creation for 17 minutes. About 2,300 checkout at=
+tempts failed. The monthly availability target of 99.9% was missed.
+
+Timeline (UTC):
+2026-03-12 16:40 orders-api 5.2 deploy started. None.
+2026-03-12 16:42 Alert OrdersApiCrashLooping fired. On-call followed SOP-DEPL=
+OY-001 and rolled back.
+2026-03-12 16:45 The release owner, not knowing about the rollback, retried t=
+he 5.2 deploy. Pods crash looped again.
+2026-03-12 16:47 On-call read the logs and found "config error: PAYMENT_GATEW=
+AY_URL is not set". Told the release owner to stop deploys.
+2026-03-12 16:52 Rollout history showed the variable was dropped in the new r=
+evision. Confirmed the cause with the release owner.
+2026-03-12 16:55 Rollback to 5.1 started. Ran kubectl -n shop rollout undo de=
+ploy/orders-api.
+2026-03-12 16:59 Pods running and orders flowing again. Closed the incident. =
+5.2 was redeployed at 19:30 with the config map mounted.
+
+Root cause: The deploy did not mount the new config map, so PAYMENT_GATEWAY_U=
+RL was missing and the app exited on start. Neither CI nor the readiness prob=
+e checked for required config, so the bad revision reached every pod.
+Fix: Rolled orders-api back to 5.1, then redeployed 5.2 later the same day wi=
+th the new config map mounted.
+
+Follow ups:
+- Write SOP-DEPLOY-002 that reads the start up error before rolling back. (Sa=
+ra Kim)
+- Fail CI when a required config key is missing. (Orders team)
+- Load config before the readiness probe reports ready. (Orders team)
+- Post every rollback in the deploy channel. (SRE team)
+
+--
+Sara Kim
+Orders team
+
+On Fri, 13 Mar 2026, Tom Becker wrote:
+> Alert OrdersApiCrashLooping fired, is anyone looking?
+> After the orders-api 5.2 deploy every pod went into CrashLoopBackOff.
+> The logs showed "config error: PAYMENT_GATEWAY_URL is not set" just
+> before each exit. No orders could be created.

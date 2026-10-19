@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : How to handle consumer lag on the orders queue</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Incidents</div>
+<h1 id="title-heading">How to handle consumer lag on the orders queue</h1>
+<div class="page-metadata">Created by Luis Romero, last modified on 2025-08-19</div>
+<div id="main-content" class="wiki-content">
+<h2>Summary</h2>
+<p>A flash sale sent four times the normal order volume. Two workers could not keep up and the orders topic built a backlog of 52,000 messages. Orders were taken but confirmed up to 25 minutes late.</p>
+<h2>What happened</h2>
+<p>During a flash sale the orders topic received about 1,200 messages per second against a normal 300. Two orders-worker replicas processed about 700 per second, so consumer lag grew to 52,000 and order confirmations were delayed.</p>
+<h2>Timeline</h2>
+<table>
+<tr><th>Time (UTC)</th><th>What</th><th>Who</th></tr>
+<tr><td>2025-08-15 18:00</td><td>Flash sale started. None. The sale was not on the capacity calendar.</td><td>Marketing team</td></tr>
+<tr><td>2025-08-15 18:09</td><td>Alert OrderQueueConsumerLagHigh fired with lag at 14,000. On-call opened an incident and followed SOP-QUEUE-001.</td><td>SRE on-call</td></tr>
+<tr><td>2025-08-15 18:15</td><td>Workers restarted. Lag kept growing. Asked the orders team for help.</td><td>SRE on-call</td></tr>
+<tr><td>2025-08-15 18:22</td><td>Orders team joined. Scaled orders-worker from 2 to 4 replicas.</td><td>Orders team</td></tr>
+<tr><td>2025-08-15 18:47</td><td>Lag back under 1,000. Closed the incident.</td><td>SRE on-call</td></tr>
+</table>
+<h2>Why it happened</h2>
+<ul>
+<li>Worker capacity was fixed at normal traffic levels and the sale was not planned for.</li>
+<li>The lag procedure in use restarted workers, which added no capacity.</li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li>Replace SOP-QUEUE-001 with a procedure that scales consumers. (Luis Romero)</li>
+<li>Add sales events to the capacity calendar. (Marketing team)</li>
+<li>Autoscale workers on consumer lag. (Orders team)</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "channel": "inc-2025-06-03-orders-api-outage-from-exhausted-databas",
+  "messages": [
+    {
+      "type": "message",
+      "user_name": "orders-team",
+      "ts": "1748940900.000100",
+      "text": "orders-api 4.18 released with the new sales report endpoint. None at the time."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1748941920.000100",
+      "text": "Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout errors. On-call acknowledged and opened an incident channel."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1748942640.000100",
+      "text": "20 of 20 pool connections in use per pod, most running the report query. Asked the database on-call to review long running queries."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1748943360.000100",
+      "text": "Checkout still failing. Raised DB_POOL_MAX to 50 on orders-api."
+    },
+    {
+      "type": "message",
+      "user_name": "orders-team",
+      "ts": "1748944200.000100",
+      "text": "Error rate back under 1%. Disabled the sales report endpoint with its feature flag."
+    },
+    {
+      "type": "message",
+      "user_name": "orders-team",
+      "ts": "1748946000.000100",
+      "text": "summary: The sales report query held pool connections for up to 90 seconds with no statement timeout. Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout. fix: Raised the pool limit from 20 to 50 to restore checkout, then disabled the sales report endpoint until its query was fixed."
+    }
+  ]
+}

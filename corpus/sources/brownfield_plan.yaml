@@ -1,0 +1,139 @@
+# How each brownfield file is made from the sources. The generator records the right answer
+# for every file in corpus/ground_truth/brownfield.jsonl.
+
+# Fake secrets planted in some files. Ingestion must redact them and they must never leak.
+# None of them use a real provider format, so repo secret scanning does not block a push.
+canaries:
+  db_password:
+    value: Canary-Db-Pass-7731
+    line: "psql login if you need it: user shop, password Canary-Db-Pass-7731"
+  internal_ip:
+    value: 10.20.30.40
+    line: the primary db is at 10.20.30.40 if dns is acting up
+  internal_host:
+    value: pg-primary.shop.internal
+    line: direct host is pg-primary.shop.internal, skip the proxy
+  api_key:
+    value: pk_canary_5d2e9b7f1a4c8e3b
+    line: new key after rotation is pk_canary_5d2e9b7f1a4c8e3b, old one gets revoked tomorrow
+  api_key_old:
+    value: pk_canary_0c4a7e19b2d65f88
+    line: "old key for reference: pk_canary_0c4a7e19b2d65f88"
+  config_token:
+    value: https://pay.shop.internal/v2?token=canary-tok-44f1e9
+    line: the missing value was PAYMENT_GATEWAY_URL=https://pay.shop.internal/v2?token=canary-tok-44f1e9
+  jwt:
+    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5hcnkifQ.Y2FuYXJ5LXNpZw
+    line: "admin token for the queue ui: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5hcnkifQ.Y2FuYXJ5LXNpZw"
+
+documents:
+  # Database pool exhaustion
+  - file: orders-db-connections-runbook.txt
+    transform: plain_runbook
+    sources: [SOP-DB-001]
+    canaries: [db_password]
+  - file: wiki-orders-api-db-pool.html
+    transform: wiki_html
+    sources: [SOP-DB-001]
+    outdated: {"DB_POOL_MAX=50": "DB_POOL_MAX=30", "2026-07-14": "2024-03-02"}
+  - file: db-pool-sop-draft.md
+    transform: half_filled
+    sources: [SOP-DB-001]
+  - file: re-orders-api-503s-this-morning.eml
+    transform: email_thread
+    sources: [RCA-2025-014]
+    canaries: [internal_ip, internal_host]
+  - file: inc-2025-06-03-orders-db-pool.json
+    transform: slack_export
+    sources: [RCA-2025-014]
+  - file: db-pool-incident-and-fix.html
+    transform: wiki_html
+    sources: [RCA-2025-014, SOP-DB-001]
+    title: Orders API 503s in June, what happened and how to fix it
+
+  # Queue consumer lag
+  - file: kafka-lag-howto.txt
+    transform: plain_runbook
+    sources: [SOP-QUEUE-002]
+    canaries: [jwt]
+  - file: lag-fix-old.docx
+    transform: old_word
+    sources: [SOP-QUEUE-001]
+  - file: re-flash-sale-orders-delayed.eml
+    transform: email_thread
+    sources: [RCA-2025-022]
+  - file: inc-2026-01-20-payment-slowness.json
+    transform: slack_export
+    sources: [RCA-2026-003]
+  - file: worker-restarts-lag-notes.md
+    transform: half_filled
+    sources: [RCA-2026-011]
+  - file: how-to-handle-consumer-lag.html
+    transform: wiki_html
+    sources: [RCA-2025-022]
+    title: How to handle consumer lag on the orders queue
+    misleading: true
+
+  # Cache down
+  - file: cache-down-runbook-copy.md
+    transform: copy
+    sources: [SOP-CACHE-001]
+    copy_of: greenfield/sop-cache-001.md
+  - file: postmortem-cache-outage-notes.txt
+    transform: plain_runbook
+    sources: [SOP-CACHE-001]
+    title: "Postmortem: cache outage notes"
+    misleading: true
+  - file: cache-eviction-incident.html
+    transform: wiki_html
+    sources: [RCA-2025-031]
+  - file: redis-restart-2024.txt
+    transform: plain_runbook
+    sources: [SOP-CACHE-001]
+    outdated: {"rollout restart statefulset/cache": "delete pod cache-0", "2026-02-03": "2024-01-15"}
+
+  # Bad config deploy
+  - file: deploy-rollback-steps.pdf
+    transform: pdf_export
+    sources: [SOP-DEPLOY-001]
+  - file: crashloop-runbook-v2.docx
+    transform: old_word
+    sources: [SOP-DEPLOY-002]
+    canaries: [config_token]
+  - file: re-sev1-orders-down-after-deploy.eml
+    transform: email_thread
+    sources: [RCA-2026-007]
+  - file: how-to-handle-orders-api-crash-loops.html
+    transform: wiki_html
+    sources: [RCA-2026-007]
+    title: How to handle orders-api crash loops
+    misleading: true
+
+  # Payment key expired. Exists only as brownfield.
+  - file: payment-key-rotation.html
+    transform: wiki_html
+    sources: [SOP-PAY-001]
+    canaries: [api_key_old]
+  - file: re-checkout-401s-tonight.eml
+    transform: email_thread
+    sources: [RCA-2026-015]
+    canaries: [api_key]
+  - file: inc-2026-05-02-payments-401.json
+    transform: slack_export
+    sources: [RCA-2026-015]
+
+  # Worker OOM. Exists only as brownfield, mostly as one page that mixes the RCA and the SOP.
+  - file: orders-worker-oom-runbook.html
+    transform: wiki_html
+    sources: [RCA-2026-019, SOP-WORKER-001]
+    title: orders-worker OOM runbook
+  - file: orders-worker-oom-runbook (1).html
+    transform: wiki_html
+    sources: [RCA-2026-019, SOP-WORKER-001]
+    title: orders-worker OOM runbook
+  - file: worker-oom-quick-fix.txt
+    transform: plain_runbook
+    sources: [SOP-WORKER-001]
+  - file: month-end-oom.eml
+    transform: email_thread
+    sources: [RCA-2026-019]

@@ -1,0 +1,22 @@
+Postmortem: cache outage notes
+(copied from the old wiki, owner: platform team, last checked 2026-02-03)
+
+Use this procedure when the OrdersApiHighLatency alert fires and orders-api logs show "redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused."
+
+before you start: kubectl access to the shop namespace.
+
+steps
+1) Confirm the cache does not answer.
+   redis-cli -h cache ping
+   should see: Connection refused instead of PONG.
+2) Confirm orders-api is falling back to the database.
+   kubectl -n shop logs deploy/orders-api --since=15m
+   should see: ConnectionError lines for cache:6379.
+3) Restart the cache.
+   kubectl -n shop rollout restart statefulset/cache
+   should see: The cache pod is running and ready.
+4) Confirm the cache answers again.
+   redis-cli -h cache ping
+   should see: PONG.
+
+if this does not help: page the platform on-call if the cache pod is not ready 10 minutes after step 3.
