@@ -1,0 +1,3 @@
+how we handled the bad deploy
+
+Last time a deploy left orders-api crash looping, the fastest fix was to read the error printed just before the pod exits, compare the config with the previous revision, and only then roll back. Rolling back blind without reading the error is what made the March outage last longer, because the same broken deploy got pushed again. Do it in that order and tell the release owner before you roll back.

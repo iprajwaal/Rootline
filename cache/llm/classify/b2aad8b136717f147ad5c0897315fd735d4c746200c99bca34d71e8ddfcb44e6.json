@@ -1,0 +1,5 @@
+{
+  "label": "mixed",
+  "confidence": 0.9,
+  "reason": "The document references a past incident (the March outage, bad deploy on orders-api) to provide context, but primarily prescribes a mandatory sequence of steps and checks to follow during a future incident."
+}

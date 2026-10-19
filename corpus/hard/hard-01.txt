@@ -1,0 +1,3 @@
+checkout slow tuesday night
+
+Tuesday night the checkout page slowed to a crawl for about twenty minutes. The cache pod had been moved during the kernel maintenance and never came back, so orders-api read everything straight from the database. Nobody noticed until a customer complained on social media. Omar brought the node back and the cache came up a few minutes later. We still don't have an alert on the cache itself.

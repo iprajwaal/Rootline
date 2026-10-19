@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document provides explicit step-by-step instructions with commands, checks, and a rollback section to address a crash looping deployment, which fits the definition of a Standard Operating Procedure (sop)."
+}

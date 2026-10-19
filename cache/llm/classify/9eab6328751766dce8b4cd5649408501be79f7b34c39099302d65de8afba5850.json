@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 1.0,
+  "reason": "The document details an incident timeline, impact, cause (sales report query starving the checkout connection pool), and a summary of the outage with a fix."
+}

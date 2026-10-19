@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 0.98,
+  "reason": "The document details a timeline of an incident, root cause, impact, and a post-incident summary including findings and a fix, which fits the criteria for a Root Cause Analysis (rca)."
+}

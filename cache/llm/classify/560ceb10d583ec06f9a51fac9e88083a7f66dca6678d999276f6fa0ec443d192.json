@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 1.0,
+  "reason": "The document describes an incident after it happened, detailing the impact, cause (cache pod moved and never came back), timeline, and a lack of alerts, without providing any step-by-step operational procedures."
+}

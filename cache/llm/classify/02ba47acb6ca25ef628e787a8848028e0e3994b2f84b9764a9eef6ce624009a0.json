@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document provides explicit step-by-step instructions on how to handle an active consumer lag alert, including verification commands, scaling procedures, and a rollback plan, which fits the definition of an SOP."
+}

@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 1.0,
+  "reason": "The document explicitly explains an incident that happened, detailing the impact, a timeline of events, root cause, and follow-up actions, matching the RCA definition."
+}

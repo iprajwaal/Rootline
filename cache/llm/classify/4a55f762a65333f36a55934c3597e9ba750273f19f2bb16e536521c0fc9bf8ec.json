@@ -1,0 +1,5 @@
+{
+  "label": "mixed",
+  "confidence": 0.95,
+  "reason": "The document contains both an incident write-up describing the June worker OOM issue with its cause and impact, and a set of operational steps with commands for checking and resolving the issue."
+}

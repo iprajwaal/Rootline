@@ -1,0 +1,8 @@
+worker oom, june
+
+Workers kept dying at the end of June because the month-end batch pulled the whole month of orders into memory. Confirmations were about forty minutes late and support got around twenty tickets. Jonas found the batch flag after an hour.
+
+1. kubectl -n shop top pod -l app=orders-worker and look for pods near 512Mi
+2. kubectl -n shop get pods -l app=orders-worker and check the restart count
+3. kubectl -n shop rollout restart deploy/orders-worker
+4. if it keeps happening, kubectl -n shop rollout undo deploy/orders-worker

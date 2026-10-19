@@ -8,3 +8,6 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://rootline:rootline@localhost:5432/rootline"
     raw_dir: Path = Path("data/raw")
+    google_api_key: str = ""
+    llm_small_model: str = "gemini-3.5-flash-lite"
+    llm_cache_dir: Path = Path("cache/llm")

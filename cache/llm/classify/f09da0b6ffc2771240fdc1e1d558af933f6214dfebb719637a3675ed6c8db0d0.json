@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 0.95,
+  "reason": "Although the title mentions 'Postmortem', the actual body of the document consists entirely of step-by-step instructions, commands, checks, and troubleshooting procedures to follow when an alert fires."
+}
