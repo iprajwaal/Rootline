@@ -1,0 +1,70 @@
+{
+  "purpose": "recover orders-worker from out of memory kills",
+  "scope": "orders-worker in the shop namespace",
+  "when_to_use": "Use this when the OrdersWorkerOOMKilled alert fires, or worker pods show \"orders-worker container killed: OOMKilled (exit code 137)\".",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace."
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Check worker memory.",
+      "command": "kubectl -n shop top pod -l app=orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "One or more workers close to the 512Mi limit.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Check how often the workers restart.",
+      "command": "kubectl -n shop get pods -l app=orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "RESTARTS above 2 in the last hour.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Restart the workers.",
+      "command": "kubectl -n shop rollout restart deploy/orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "Pods restart and memory drops.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "If restarts continue, roll back the worker release.",
+      "command": "kubectl -n shop rollout undo deploy/orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "The previous worker version is running.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team if workers still restart after step 4."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

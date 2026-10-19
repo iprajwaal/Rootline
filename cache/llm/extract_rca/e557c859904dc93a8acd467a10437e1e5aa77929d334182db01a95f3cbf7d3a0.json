@@ -1,0 +1,73 @@
+{
+  "solution": "Lowered the payment client timeout from 10 seconds to 3 seconds and sent failed payments to the retry topic so the main loop kept moving.",
+  "short_description": "Orders queue consumer lag from slow payment gateway",
+  "authors": [],
+  "stakeholders": [
+    "sre-on-call",
+    "payments-team-on-call",
+    "orders-team"
+  ],
+  "status": "Closed",
+  "environment": "",
+  "incident_date": "2026-01-20",
+  "start_time": "14:02",
+  "duration": "56 minutes",
+  "severity": "",
+  "trigger": "payment-gateway p95 latency rose from 300 ms to 4 s",
+  "problem_statement": "The worker makes a blocking payment call inside the message loop, so a slow provider slows the whole consumer. The payment client timeout of 10 seconds let each slow call hold a worker for too long.",
+  "impact_description": "OrderQueueConsumerLagHigh fired with lag at 11,000",
+  "impact_metrics": "Lag at 11,000",
+  "customer_feedback": "",
+  "immediate_resolution": "Payment client timeout lowered to 3 s and failed payments sent to the retry topic. Config change rolled out to orders-worker.",
+  "timeline": [
+    {
+      "timestamp": "2026-01-20 14:02",
+      "event": "payment-gateway p95 latency rose from 300 ms to 4 s. None. There was no alert on payment latency.",
+      "action": "",
+      "responsibility": "payment-provider"
+    },
+    {
+      "timestamp": "2026-01-20 14:10",
+      "event": "Alert OrderQueueConsumerLagHigh fired with lag at 11,000. On-call followed SOP-QUEUE-002.",
+      "action": "Followed SOP-QUEUE-002",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-01-20 14:18",
+      "event": "Workers scaled from 2 to 4. Lag growth slowed but did not stop. Read the worker logs and found slow payment calls.",
+      "action": "Scaled workers from 2 to 4. Read the worker logs.",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-01-20 14:35",
+      "event": "The payment provider confirmed a problem on their side. Paged the payments team on-call.",
+      "action": "Paged the payments team on-call",
+      "responsibility": "payments-team-on-call"
+    },
+    {
+      "timestamp": "2026-01-20 14:42",
+      "event": "Payment client timeout lowered to 3 s and failed payments sent to the retry topic. Config change rolled out to orders-worker.",
+      "action": "Lowered payment client timeout to 3 s and sent failed payments to the retry topic. Rolled out config change to orders-worker.",
+      "responsibility": "orders-team"
+    },
+    {
+      "timestamp": "2026-01-20 14:58",
+      "event": "Lag back under 1,000. Closed the incident.",
+      "action": "Closed the incident",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-01-20 15:28",
+      "event": "The worker makes a blocking payment call inside the message loop, so a slow provider slows the whole consumer. The payment client timeout of 10 seconds let each slow call hold a worker for too long.",
+      "action": "",
+      "responsibility": "orders-team"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The worker makes a blocking payment call inside the message loop, so a slow provider slows the whole consumer.",
+    "The payment client timeout of 10 seconds let each slow call hold a worker for too long."
+  ],
+  "action_items": []
+}

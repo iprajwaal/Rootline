@@ -1,0 +1,70 @@
+{
+  "purpose": "recover orders-api when the cache is down",
+  "scope": "",
+  "when_to_use": "when the OrdersApiHighLatency alert fires and orders-api logs show \"redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused.\"",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace."
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Confirm the cache does not answer.",
+      "command": "redis-cli -h cache ping",
+      "action": null,
+      "check_name": null,
+      "expect": "Connection refused instead of PONG.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Confirm orders-api is falling back to the database.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "action": null,
+      "check_name": null,
+      "expect": "ConnectionError lines for cache:6379.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Restart the cache.",
+      "command": "kubectl -n shop delete pod cache-0",
+      "action": null,
+      "check_name": null,
+      "expect": "The cache pod is running and ready.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Confirm the cache answers again.",
+      "command": "redis-cli -h cache ping",
+      "action": null,
+      "check_name": null,
+      "expect": "PONG.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [
+    "page the platform on-call if the cache pod is not ready 10 minutes after step 3."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

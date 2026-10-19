@@ -1,0 +1,94 @@
+{
+  "purpose": "roll back an orders-api deploy that is crash looping",
+  "scope": "orders-api pods in shop namespace",
+  "when_to_use": "when the OrdersApiCrashLooping alert fires, or when orders-api pods are in CrashLoopBackOff after a deploy",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace",
+    "The revision number of the last good deploy, from the deploy channel"
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Confirm the pods are crash looping.",
+      "command": "kubectl -n shop get pods -l app=orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": "Pods in CrashLoopBackOff with a rising restart count.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Read the start up error.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "action": null,
+      "check_name": null,
+      "expect": "An error printed just before exit, for example \"config error: PAYMENT_GATEWAY_URL is not set\".",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Compare the config with the last good revision.",
+      "command": "kubectl -n shop rollout history deploy/orders-api --revision=2",
+      "action": null,
+      "check_name": null,
+      "expect": "The variable named in the error is missing or changed in the new revision.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Roll back to the last good revision.",
+      "command": "kubectl -n shop rollout undo deploy/orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": "The rollout finishes and pods stay running.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 5,
+      "instruction": "Confirm the API is healthy.",
+      "command": "curl -s http://orders-api:8080/health",
+      "action": null,
+      "check_name": null,
+      "expect": "Status ok.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [
+    {
+      "ordinal": 1,
+      "instruction": "Re-apply the new revision only after its config is fixed.",
+      "command": "kubectl -n shop rollout undo deploy/orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team lead if orders are still failing 10 minutes after step 4"
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

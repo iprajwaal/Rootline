@@ -1,0 +1,59 @@
+{
+  "purpose": "fix consumer lag on the orders queue",
+  "scope": "orders queue",
+  "when_to_use": "When the OrderQueueConsumerLagHigh alert fires, or when orders stay in pending for more than a few minutes.",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace."
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Check the consumer lag.",
+      "command": "kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "Lag above 10000 on one or more partitions.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Restart the workers.",
+      "command": "kubectl -n shop rollout restart deploy/orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "All worker pods restart and rejoin the consumer group.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Check the lag again after five minutes.",
+      "command": "kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "The lag is going down.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team if the lag keeps growing after the restart."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

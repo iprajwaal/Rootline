@@ -25,6 +25,17 @@ class ParsedDoc(BaseModel):
     text: str
 
 
+class DocFacts(BaseModel):
+    doc_id: str | None = None
+    title: str
+    services: list[str] = []
+    alerts: list[str] = []
+    error_signatures: list[str] = []
+    effective_date: str | None = None
+    mentions: list[str] = []
+    supersedes: str | None = None
+
+
 class DocMeta(BaseModel):
     doc_id: str
     doc_type: DocType

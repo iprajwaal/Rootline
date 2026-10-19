@@ -1,0 +1,82 @@
+{
+  "solution": "Disabled the sales report endpoint with its feature flag.",
+  "short_description": "Orders API returned 503 errors due to database connection pool exhaustion caused by a new sales report endpoint running slow queries.",
+  "authors": [],
+  "stakeholders": [
+    "Orders team",
+    "SRE on-call",
+    "Priya Nair"
+  ],
+  "status": "Resolved",
+  "environment": "",
+  "incident_date": "2025-06-03",
+  "start_time": "09:12",
+  "duration": "38 minutes",
+  "severity": "",
+  "trigger": "A new sales report endpoint held connections while it ran slow queries.",
+  "problem_statement": "For 38 minutes orders-api could not get database connections and returned 503 on about 12% of checkout requests.",
+  "impact_description": "orders-api could not get database connections and returned 503 on about 12% of checkout requests.",
+  "impact_metrics": "503 on about 12% of checkout requests",
+  "customer_feedback": "",
+  "immediate_resolution": "Disabled the sales report endpoint with its feature flag.",
+  "timeline": [
+    {
+      "timestamp": "2025-06-03 08:55",
+      "event": "orders-api 4.18 released with the new sales report endpoint. None at the time.",
+      "action": "",
+      "responsibility": "Orders team"
+    },
+    {
+      "timestamp": "2025-06-03 09:12",
+      "event": "Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout errors. On-call acknowledged and opened an incident channel.",
+      "action": "",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2025-06-03 09:24",
+      "event": "20 of 20 pool connections in use per pod, most running the report query. Asked the database on-call to review long running queries.",
+      "action": "Asked the database on-call to review long running queries.",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2025-06-03 09:36",
+      "event": "Checkout still failing. Raised DB_POOL_MAX to 50 on orders-api.",
+      "action": "Raised DB_POOL_MAX to 50 on orders-api.",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2025-06-03 09:50",
+      "event": "Error rate back under 1%. Disabled the sales report endpoint with its feature flag.",
+      "action": "Disabled the sales report endpoint with its feature flag.",
+      "responsibility": "Orders team"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The sales report query held pool connections for up to 90 seconds with no statement timeout.",
+    "Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout."
+  ],
+  "action_items": [
+    {
+      "action": "Add an alert at 80% pool usage.",
+      "owner": "SRE team",
+      "due_date": null
+    },
+    {
+      "action": "Set a 30 second statement timeout on report queries.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Write SOP-DB-001 for pool exhaustion.",
+      "owner": "Priya Nair",
+      "due_date": null
+    },
+    {
+      "action": "Move reports to a read replica with its own pool.",
+      "owner": "Orders team",
+      "due_date": null
+    }
+  ]
+}

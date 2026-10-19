@@ -1,0 +1,79 @@
+{
+  "solution": "",
+  "short_description": "Slow checkout while the cache was down",
+  "authors": [],
+  "stakeholders": [],
+  "status": "",
+  "environment": "",
+  "incident_date": "2025-10-21",
+  "start_time": "02:10",
+  "duration": "22 minutes",
+  "severity": "",
+  "trigger": "Node drain for a kernel upgrade",
+  "problem_statement": "The cache pod was evicted during a node drain and did not come back on its own. orders-api fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for 22 minutes.",
+  "impact_description": "Checkout p95 latency rose from 250 ms to 2.8 s and orders-api logged connection refused errors for cache:6379.",
+  "impact_metrics": "Checkout p95 latency rose to 2.8 seconds for 22 minutes (from 250 ms)",
+  "customer_feedback": "",
+  "immediate_resolution": "Node back in the cluster. Restarted the cache statefulset.",
+  "timeline": [
+    {
+      "timestamp": "2025-10-21 02:10",
+      "event": "Node drain started for a kernel upgrade. Planned maintenance.",
+      "action": "",
+      "responsibility": "Platform team"
+    },
+    {
+      "timestamp": "2025-10-21 02:11",
+      "event": "Cache pod evicted. orders-api logged connection refused errors for cache:6379. None.",
+      "action": "",
+      "responsibility": "Platform team"
+    },
+    {
+      "timestamp": "2025-10-21 02:14",
+      "event": "Alert OrdersApiHighLatency fired. On-call opened an incident.",
+      "action": "",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2025-10-21 02:29",
+      "event": "Cache pod found stuck in Pending, its volume bound to the drained node. Asked the platform on-call to bring the node back.",
+      "action": "",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2025-10-21 02:33",
+      "event": "Node back in the cluster. Restarted the cache statefulset.",
+      "action": "",
+      "responsibility": "Platform on-call"
+    },
+    {
+      "timestamp": "2025-10-21 02:36",
+      "event": "Latency back to normal. Closed the incident.",
+      "action": "",
+      "responsibility": "SRE on-call"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The cache ran as a single pod with no PodDisruptionBudget, so a planned drain took it down.",
+    "Its volume was bound to one node, so the pod could not move to another node."
+  ],
+  "action_items": [
+    {
+      "action": "Add a PodDisruptionBudget for the cache.",
+      "owner": "Platform team",
+      "due_date": null
+    },
+    {
+      "action": "Alert when redis-cli ping fails for 2 minutes.",
+      "owner": "SRE team",
+      "due_date": null
+    },
+    {
+      "action": "Write SOP-CACHE-001.",
+      "owner": "Omar Haddad",
+      "due_date": null
+    }
+  ]
+}

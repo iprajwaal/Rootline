@@ -1,0 +1,82 @@
+{
+  "solution": "Raised the pool limit from 20 to 50 to restore checkout, then disabled the sales report endpoint until its query was fixed.",
+  "short_description": "orders api outage from exhausted database connection pool",
+  "authors": [
+    "Priya Nair"
+  ],
+  "stakeholders": [
+    "Tom Becker"
+  ],
+  "status": "resolved",
+  "environment": "production",
+  "incident_date": "2025-06-03",
+  "start_time": "09:12",
+  "duration": "38 minutes",
+  "severity": null,
+  "trigger": "A new sales report endpoint held connections while it ran slow queries.",
+  "problem_statement": "For 38 minutes orders-api could not get database connections and returned 503 on about 12% of checkout requests.",
+  "impact_description": "Partial outage of 38 minutes. About 4,100 orders were delayed and none were lost, because clients retried. No SLA breach. The monthly availability target stayed above 99.9%.",
+  "impact_metrics": "About 4,100 orders were delayed, 12% of checkout requests returned 503.",
+  "customer_feedback": "",
+  "immediate_resolution": "Raised DB_POOL_MAX to 50 on orders-api and disabled the sales report endpoint with its feature flag.",
+  "timeline": [
+    {
+      "timestamp": "2025-06-03 08:55",
+      "event": "orders-api 4.18 released with the new sales report endpoint. None at the time.",
+      "action": "released orders-api 4.18",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-06-03 09:12",
+      "event": "Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout errors. On-call acknowledged and opened an incident channel.",
+      "action": "acknowledged alert and opened an incident channel",
+      "responsibility": "on-call"
+    },
+    {
+      "timestamp": "2025-06-03 09:24",
+      "event": "20 of 20 pool connections in use per pod, most running the report query. Asked the database on-call to review long running queries.",
+      "action": "asked the database on-call to review long running queries",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-06-03 09:36",
+      "event": "Checkout still failing. Raised DB_POOL_MAX to 50 on orders-api.",
+      "action": "raised DB_POOL_MAX to 50 on orders-api",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-06-03 09:50",
+      "event": "Error rate back under 1%. Disabled the sales report endpoint with its feature flag.",
+      "action": "disabled the sales report endpoint with its feature flag",
+      "responsibility": ""
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The sales report query held pool connections for up to 90 seconds with no statement timeout.",
+    "Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout."
+  ],
+  "action_items": [
+    {
+      "action": "Add an alert at 80% pool usage.",
+      "owner": "SRE team",
+      "due_date": null
+    },
+    {
+      "action": "Set a 30 second statement timeout on report queries.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Write SOP-DB-001 for pool exhaustion.",
+      "owner": "Priya Nair",
+      "due_date": null
+    },
+    {
+      "action": "Move reports to a read replica with its own pool.",
+      "owner": "Orders team",
+      "due_date": null
+    }
+  ]
+}

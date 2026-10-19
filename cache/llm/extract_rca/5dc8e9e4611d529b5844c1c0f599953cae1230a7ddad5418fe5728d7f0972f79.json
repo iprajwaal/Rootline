@@ -1,0 +1,72 @@
+{
+  "solution": "Restarted the workers with the month-end batch disabled, then ran the batch on a separate job.",
+  "short_description": "orders-worker killed for memory during the month-end batch",
+  "authors": [
+    "Jonas Weber"
+  ],
+  "stakeholders": [
+    "Luis Romero",
+    "Orders team"
+  ],
+  "status": "closed",
+  "environment": "",
+  "incident_date": "2026-06-30",
+  "start_time": "23:15",
+  "duration": "just over an hour",
+  "severity": "",
+  "trigger": "Month-end report batch ran inside orders-worker and loaded every order of the month into memory.",
+  "problem_statement": "The month-end report batch ran inside orders-worker and loaded every order of the month into memory. Workers hit their 512Mi limit and were killed again and again for just over an hour.",
+  "impact_description": "Confirmations up to 40 minutes late for about 5,200 orders. No orders lost.",
+  "impact_metrics": "Confirmations up to 40 minutes late for about 5,200 orders.",
+  "customer_feedback": "",
+  "immediate_resolution": "Disabled the batch flag and restarted the workers.",
+  "timeline": [
+    {
+      "timestamp": "2026-06-30 23:15",
+      "event": "Month-end batch started inside orders-worker. None.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-06-30 23:20",
+      "event": "Alert OrdersWorkerOOMKilled fired. On-call restarted the workers.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-06-30 23:48",
+      "event": "Workers killed again within minutes of each restart. Paged the orders team.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-07-01 00:12",
+      "event": "Orders team found the batch loading the whole month into memory. Disabled the batch flag and restarted the workers.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-07-01 00:25",
+      "event": "Workers stable and the backlog cleared. Closed the incident.",
+      "action": "",
+      "responsibility": ""
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The month-end batch loaded all orders of the month into worker memory at once. The batch ran inside orders-worker, so its memory use killed the order consumer too."
+  ],
+  "action_items": [
+    {
+      "action": "Move the month-end batch to its own scheduled job.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Read orders in pages of 1,000 in the batch.",
+      "owner": "Orders team",
+      "due_date": null
+    }
+  ]
+}

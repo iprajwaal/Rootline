@@ -117,7 +117,8 @@ def add_page(
         nonlocal heading, text_lines
         if heading:
             builder.add("heading", heading[1], level=heading[0])
-        add_text(builder, "\n".join(text_lines), infer_headings=infer_headings)
+        # Line breaks inside a PDF paragraph are only where the page wrapped the text.
+        add_text(builder, "\n".join(text_lines), infer_headings=infer_headings, line_joiner=" ")
         heading, text_lines = None, []
 
     for item in items:

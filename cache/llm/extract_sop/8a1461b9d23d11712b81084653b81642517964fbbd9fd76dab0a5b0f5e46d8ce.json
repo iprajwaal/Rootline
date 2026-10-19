@@ -1,0 +1,96 @@
+{
+  "purpose": "recover orders-api from database connection pool exhaustion",
+  "scope": "orders-api",
+  "when_to_use": "Use this procedure when the OrdersDbPoolExhausted alert fires, or when orders-api returns 503 and logs \"psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec\".",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace",
+    "Read access to orders-db with the shop user",
+    "orders-db max_connections is at least 300",
+    "Ask the database on-call if unsure"
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Confirm the API is failing on pool timeouts.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "action": null,
+      "check_name": null,
+      "expect": "Repeated PoolTimeout lines in the last 15 minutes.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Count open database connections.",
+      "command": "psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\"",
+      "action": null,
+      "check_name": null,
+      "expect": "The count is at or near 20 times the number of orders-api pods.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "List long running queries that hold connections.",
+      "command": "psql -h orders-db -U shop -c \"select pid, now() - query_start as age, query from pg_stat_activity where state <> 'idle' order by age desc limit 10\"",
+      "action": null,
+      "check_name": null,
+      "expect": "Any query older than 60 seconds is posted in the incident channel with its pid.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Raise the pool limit.",
+      "command": "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50",
+      "action": null,
+      "check_name": null,
+      "expect": "The rollout completes and new pods start with DB_POOL_MAX=50.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 5,
+      "instruction": "Confirm the API is healthy.",
+      "command": "curl -s http://orders-api:8080/health",
+      "action": null,
+      "check_name": null,
+      "expect": "Status ok and orders-db ok.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [
+    {
+      "ordinal": 1,
+      "instruction": "Set the pool limit back once the long running queries are fixed. kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20",
+      "command": "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team lead if the error rate is above 5% after step 5."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

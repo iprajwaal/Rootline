@@ -1,0 +1,65 @@
+{
+  "solution": "Rotated the key with shopctl and restarted orders-api.",
+  "short_description": "Payment API key expired.",
+  "authors": [
+    "payments-team"
+  ],
+  "stakeholders": [],
+  "status": "Closed",
+  "environment": "",
+  "incident_date": "2026-05-02",
+  "start_time": "00:00",
+  "duration": "58 minutes",
+  "severity": "",
+  "trigger": "Payment API key expired",
+  "problem_statement": "Payment API key expired.",
+  "impact_description": "Card payments failing.",
+  "impact_metrics": "",
+  "customer_feedback": "",
+  "immediate_resolution": "Key rotated and orders-api restarted.",
+  "timeline": [
+    {
+      "timestamp": "2026-05-02 00:00",
+      "event": "Payment API key expired. None. The expiry reminder went to an old mailbox.",
+      "action": "",
+      "responsibility": "payments-team"
+    },
+    {
+      "timestamp": "2026-05-02 00:07",
+      "event": "Alert PaymentAuthFailures fired. On-call opened an incident.",
+      "action": "",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-05-02 00:31",
+      "event": "On-call found the expired key with shopctl secrets describe. Paged the payments team on-call for the rotate permission.",
+      "action": "shopctl secrets describe",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-05-02 00:52",
+      "event": "Key rotated and orders-api restarted. Watched the 401 rate fall to zero.",
+      "action": "",
+      "responsibility": "payments-team-on-call"
+    },
+    {
+      "timestamp": "2026-05-02 00:58",
+      "event": "Card payments working again. Closed the incident.",
+      "action": "",
+      "responsibility": "sre-on-call"
+    },
+    {
+      "timestamp": "2026-05-02 01:28",
+      "event": "summary: The key expiry reminder went to an unmonitored mailbox, so the key expired unnoticed. Nothing alerted on keys close to expiry. fix: Rotated the key with shopctl and restarted orders-api.",
+      "action": "",
+      "responsibility": "payments-team"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The key expiry reminder went to an unmonitored mailbox, so the key expired unnoticed.",
+    "Nothing alerted on keys close to expiry."
+  ],
+  "action_items": []
+}
