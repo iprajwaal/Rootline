@@ -1,0 +1,107 @@
+render_as: docx
+
+meta:
+  doc_id: RCA-2026-003
+  doc_type: rca
+  title: Orders queue consumer lag from slow payment calls
+  services: [orders-worker, order-queue, payment-gateway]
+  owner: Orders team
+  revision: 1
+  effective_date: "2026-01-23"
+  supersedes: null
+  related: [SOP-QUEUE-002]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    payment-gateway slowed to a p95 of 4 seconds. Each worker waits for the payment call before
+    it commits a message, so the orders topic lagged by up to 31,000 messages. Scaling workers
+    helped only a little.
+  authors: [Mei Chen]
+  stakeholders: [Mei Chen, Luis Romero, Payments team on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2026-01-20"
+  start_time: "2026-01-20 14:10 UTC"
+  duration: 48 minutes
+  severity: High
+  trigger: Alert OrderQueueConsumerLagHigh
+  problem_statement: >-
+    Consumer lag on the orders topic grew to 31,000 messages. Worker logs showed payment calls
+    taking 4 to 10 seconds. Scaling orders-worker from 2 to 4 replicas slowed the growth but did
+    not stop it.
+  impact_description: >-
+    External customers in all regions. Orders were accepted but confirmed late, and some
+    payments timed out.
+  impact_metrics: >-
+    Confirmations up to 40 minutes late for about 6,500 orders. 120 orders timed out on payment
+    and were retried by support. No SLA breach.
+  customer_feedback: 64 support tickets. One business customer asked for a written incident summary.
+  immediate_resolution: >-
+    Lowered the payment client timeout from 10 seconds to 3 seconds and sent failed payments to
+    the retry topic so the main loop kept moving.
+  timeline:
+    - timestamp: "2026-01-20 14:02"
+      event: payment-gateway p95 latency rose from 300 ms to 4 s.
+      action: None. There was no alert on payment latency.
+      responsibility: Payment provider
+    - timestamp: "2026-01-20 14:10"
+      event: Alert OrderQueueConsumerLagHigh fired with lag at 11,000.
+      action: On-call followed SOP-QUEUE-002.
+      responsibility: SRE on-call
+    - timestamp: "2026-01-20 14:18"
+      event: Workers scaled from 2 to 4. Lag growth slowed but did not stop.
+      action: Read the worker logs and found slow payment calls.
+      responsibility: SRE on-call
+    - timestamp: "2026-01-20 14:35"
+      event: The payment provider confirmed a problem on their side.
+      action: Paged the payments team on-call.
+      responsibility: Payments team on-call
+    - timestamp: "2026-01-20 14:42"
+      event: Payment client timeout lowered to 3 s and failed payments sent to the retry topic.
+      action: Config change rolled out to orders-worker.
+      responsibility: Orders team
+    - timestamp: "2026-01-20 14:58"
+      event: Lag back under 1,000.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why did consumer lag grow?
+      answer: Each message took over 4 seconds to process.
+    - question: Why did each message take so long?
+      answer: The worker waits for payment-gateway inside the message loop, and payment-gateway was slow.
+    - question: Why does the worker wait for payment in the loop?
+      answer: The original design charged the card and confirmed the order in one step.
+    - question: Why was the slow dependency not found sooner?
+      answer: There was no alert on payment-gateway latency, and the lag procedure did not mention it.
+    - question: Why was the timeout so high?
+      answer: The payment client timeout was set to 10 seconds years ago and never reviewed.
+  fishbone:
+    - category: external
+      issues:
+        - The payment provider had a latency problem on their side.
+      whys:
+        - Outside our control. Our design had no protection against it.
+    - category: tools
+      issues:
+        - Payment client timeout of 10 seconds.
+        - Payment call inside the message loop.
+    - category: data
+      issues:
+        - No alert on payment-gateway p95 latency.
+  root_causes:
+    - The worker makes a blocking payment call inside the message loop, so a slow provider slows the whole consumer.
+    - The payment client timeout of 10 seconds let each slow call hold a worker for too long.
+  action_items:
+    - action: Lower the payment client timeout to 3 seconds.
+      owner: Orders team
+      due_date: "2026-01-21"
+    - action: Take payment calls out of the message loop.
+      owner: Orders team
+      due_date: "2026-03-31"
+    - action: Alert on payment-gateway p95 latency over 1 second.
+      owner: SRE team
+      due_date: "2026-02-06"
+    - action: Add a payment latency check to SOP-QUEUE-002.
+      owner: Mei Chen
+      due_date: "2026-02-06"

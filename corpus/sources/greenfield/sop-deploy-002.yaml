@@ -1,0 +1,108 @@
+render_as: docx
+
+meta:
+  doc_id: SOP-DEPLOY-002
+  doc_type: sop
+  title: Roll back an orders-api deploy that is crash looping
+  services: [orders-api]
+  owner: Orders team
+  revision: 1
+  effective_date: "2026-04-02"
+  supersedes: SOP-DEPLOY-001
+  related: [RCA-2026-007]
+
+record:
+  purpose: >-
+    Find out why a new orders-api revision crashes on start, then roll back to the last good
+    revision.
+  scope: >-
+    Applies to orders-api deploys in the shop-prod and shop-staging clusters when pods crash
+    loop after a deploy. Does not apply to crashes that start without a deploy. Treat those as
+    a new incident and page the orders team.
+  when_to_use: >-
+    Use this procedure when the OrdersApiCrashLooping alert fires, or when orders-api pods are
+    in CrashLoopBackOff after a deploy.
+  alerts: [OrdersApiCrashLooping]
+  definitions:
+    - term: CrashLoopBackOff
+      meaning: Kubernetes status for a pod that keeps exiting and is restarted with a growing delay.
+    - term: Revision
+      meaning: One version of the orders-api deployment. Rollout history keeps the last 10.
+    - term: Config map
+      meaning: The Kubernetes object that holds orders-api settings such as PAYMENT_GATEWAY_URL.
+  roles:
+    - role: On-call engineer
+      responsibility: Runs the procedure and posts each result in the deploy channel.
+    - role: Release owner
+      responsibility: Fixes the config or code before the new revision is deployed again.
+  related_documents:
+    - 'SOP-DEPLOY-001: older procedure that rolled back without reading the error. Replaced by this one.'
+    - 'RCA-2026-007: crash loop from a missing PAYMENT_GATEWAY_URL after a config refactor.'
+  prerequisites:
+    - kubectl access to the shop namespace.
+    - The revision number of the last good deploy, from the deploy channel.
+  overview: >-
+    Confirm the crash loop, read the start up error, compare the config with the last good
+    revision, roll back, then verify. Do not redeploy the new revision until the release owner
+    has fixed the cause.
+  steps:
+    - ordinal: 1
+      instruction: Confirm the pods are crash looping.
+      command: kubectl -n shop get pods -l app=orders-api
+      expect: Pods in CrashLoopBackOff with a rising restart count.
+      responsibility: On-call engineer
+    - ordinal: 2
+      instruction: Read the start up error.
+      command: kubectl -n shop logs deploy/orders-api --since=15m
+      check_name: logs
+      expect: >-
+        An error printed just before exit, for example "config error: PAYMENT_GATEWAY_URL is
+        not set".
+      responsibility: On-call engineer
+    - ordinal: 3
+      instruction: Compare the config with the last good revision.
+      command: kubectl -n shop rollout history deploy/orders-api --revision=2
+      check_name: config_diff
+      expect: The variable named in the error is missing or changed in the new revision.
+      responsibility: On-call engineer
+    - ordinal: 4
+      instruction: Roll back to the last good revision.
+      command: kubectl -n shop rollout undo deploy/orders-api
+      action: rollback_config
+      expect: The rollout finishes and pods stay running.
+      responsibility: On-call engineer
+    - ordinal: 5
+      instruction: Confirm the API is healthy.
+      command: curl -s http://orders-api:8080/health
+      check_name: health
+      expect: Status ok.
+      responsibility: On-call engineer
+  verification:
+    - orders-api pods have no restarts for 10 minutes.
+    - Orders are created again in the shop.
+  rollback:
+    - ordinal: 1
+      instruction: Re-apply the new revision only after its config is fixed.
+      command: kubectl -n shop rollout undo deploy/orders-api
+      expect: The new revision runs with no restarts.
+      responsibility: Release owner
+  troubleshooting:
+    - symptom: The logs show no error before the pod exits.
+      action: >-
+        The process may be killed before it logs. Run kubectl -n shop describe pod and check the
+        last state for OOMKilled or a failed probe.
+    - symptom: The rollback also crash loops.
+      action: The cause is outside the deploy, such as a removed secret. Page the orders team lead.
+  escalation:
+    - Page the orders team lead if orders are still failing 10 minutes after step 4.
+  security_notes:
+    - Do not print config maps or secrets into the incident channel. Compare key names only.
+  compliance:
+    - A rollback in production is an emergency change. Open a change record within 24 hours.
+  review_cycle: Reviewed every 6 months, and after any failed deploy.
+  records: Each run is recorded in the deploy channel and the incident ticket.
+  revision_history:
+    - revision: 1
+      date: "2026-04-02"
+      author: Sara Kim
+      change: First version, written after RCA-2026-007. Replaces SOP-DEPLOY-001.

@@ -1,0 +1,115 @@
+render_as: docx
+
+meta:
+  doc_id: SOP-DB-001
+  doc_type: sop
+  title: Recover orders-api from database connection pool exhaustion
+  services: [orders-api, orders-db]
+  owner: Orders team
+  revision: 2
+  effective_date: "2026-07-14"
+  supersedes: null
+  related: [RCA-2025-014]
+
+record:
+  purpose: >-
+    Restore orders-api when every connection in its database pool is in use and requests
+    fail while waiting for a connection.
+  scope: >-
+    Applies to orders-api in the shop-prod and shop-staging clusters when requests fail with
+    pool timeouts. Does not apply when orders-db itself is down or failing over. In that case
+    page the database on-call.
+  when_to_use: >-
+    Use this procedure when the OrdersDbPoolExhausted alert fires, or when orders-api returns
+    503 and logs "psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec".
+  alerts: [OrdersDbPoolExhausted]
+  definitions:
+    - term: Connection pool
+      meaning: The fixed set of database connections each orders-api pod keeps open and shares between requests.
+    - term: DB_POOL_MAX
+      meaning: Environment variable that sets the pool size per pod. The default is 20.
+    - term: PoolTimeout
+      meaning: Error raised when a request waits 30 seconds without getting a connection.
+  roles:
+    - role: On-call engineer
+      responsibility: Runs the procedure and posts each result in the incident channel.
+    - role: Database on-call
+      responsibility: Reviews long running queries and stops them if needed.
+    - role: Orders team lead
+      responsibility: Approves any pool size above 50.
+  related_documents:
+    - 'RCA-2025-014: outage caused by an exhausted pool after a report endpoint release.'
+  prerequisites:
+    - kubectl access to the shop namespace.
+    - Read access to orders-db with the shop user.
+    - orders-db max_connections is at least 300. Ask the database on-call if unsure.
+  overview: >-
+    Confirm the API is failing on pool timeouts, find what is holding connections, raise the
+    pool limit to restore service, then verify. Fixing the query that held the connections is
+    follow-up work and is not part of this procedure.
+  steps:
+    - ordinal: 1
+      instruction: Confirm the API is failing on pool timeouts.
+      command: kubectl -n shop logs deploy/orders-api --since=15m
+      check_name: logs
+      expect: Repeated PoolTimeout lines in the last 15 minutes.
+      responsibility: On-call engineer
+    - ordinal: 2
+      instruction: Count open database connections.
+      command: 'psql -h orders-db -U shop -c "select count(*) from pg_stat_activity"'
+      check_name: db_connections
+      expect: The count is at or near 20 times the number of orders-api pods.
+      responsibility: On-call engineer
+    - ordinal: 3
+      instruction: List long running queries that hold connections.
+      command: 'psql -h orders-db -U shop -c "select pid, now() - query_start as age, query from pg_stat_activity where state <> ''idle'' order by age desc limit 10"'
+      expect: Any query older than 60 seconds is posted in the incident channel with its pid.
+      responsibility: On-call engineer
+    - ordinal: 4
+      instruction: Raise the pool limit.
+      command: kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50
+      action: raise_pool_limit
+      expect: The rollout completes and new pods start with DB_POOL_MAX=50.
+      responsibility: On-call engineer
+    - ordinal: 5
+      instruction: Confirm the API is healthy.
+      command: curl -s http://orders-api:8080/health
+      check_name: health
+      expect: Status ok and orders-db ok.
+      responsibility: On-call engineer
+  verification:
+    - The 5xx rate on orders-api stays under 1% for 10 minutes.
+    - Open connections stay below 80% of the new pool size.
+    - No new PoolTimeout lines in orders-api logs.
+  rollback:
+    - ordinal: 1
+      instruction: Set the pool limit back once the long running queries are fixed.
+      command: kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20
+      expect: The rollout completes with DB_POOL_MAX=20 and the error rate stays under 1%.
+      responsibility: On-call engineer
+  troubleshooting:
+    - symptom: Pool usage is low but requests still time out.
+      action: The database may be slow rather than the pool. Check orders-db CPU and locks, and page the database on-call.
+    - symptom: Errors come back a few minutes after raising the limit.
+      action: A query is still holding connections. Ask the database on-call to stop it with pg_terminate_backend.
+    - symptom: 'orders-db rejects new connections with "sorry, too many clients already".'
+      action: max_connections is reached. Do not raise the pool further. Roll back step 4 and escalate.
+  escalation:
+    - Page the orders team lead if the error rate is above 5% after step 5.
+    - Page the database on-call if orders-db rejects connections or a query cannot be stopped.
+  security_notes:
+    - Use the shop user for diagnostics. Do not use the postgres superuser.
+    - Do not paste query text that contains customer data into public channels.
+  compliance:
+    - Changing DB_POOL_MAX in production is a standard change. Record it in the incident ticket.
+  review_cycle: Reviewed every 6 months, and after any incident where this procedure was used.
+  records: Each run is recorded in the incident ticket with step results and the time of each change.
+  revision_history:
+    - revision: 1
+      date: "2025-06-20"
+      author: Priya Nair
+      change: First version, written after RCA-2025-014.
+    - revision: 2
+      date: "2026-07-14"
+      author: Tom Becker
+      change: Added the long running query step and the troubleshooting table.

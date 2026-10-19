@@ -1,0 +1,95 @@
+render_as: md
+
+meta:
+  doc_id: RCA-2025-031
+  doc_type: rca
+  title: Slow checkout while the cache was down
+  services: [cache, orders-api]
+  owner: Platform team
+  revision: 1
+  effective_date: "2025-10-24"
+  supersedes: null
+  related: [SOP-CACHE-001]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    The cache pod was evicted during a node drain and did not come back on its own. orders-api
+    fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for
+    22 minutes.
+  authors: [Omar Haddad]
+  stakeholders: [Omar Haddad, Tom Becker, Platform on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2025-10-21"
+  start_time: "2025-10-21 02:14 UTC"
+  duration: 22 minutes
+  severity: Medium
+  trigger: Alert OrdersApiHighLatency
+  problem_statement: >-
+    Checkout p95 latency rose from 250 ms to 2.8 s. orders-api logged
+    "redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused."
+    The cache pod was stuck in Pending after a node drain.
+  impact_description: External customers in the EU region saw slow checkout. No requests failed.
+  impact_metrics: 22 minutes of slow checkout. Conversion dropped about 4% during the window. No SLA breach.
+  customer_feedback: No tickets. Night-time traffic was low.
+  immediate_resolution: Restarted the cache statefulset after the drained node came back.
+  timeline:
+    - timestamp: "2025-10-21 02:10"
+      event: Node drain started for a kernel upgrade.
+      action: Planned maintenance.
+      responsibility: Platform team
+    - timestamp: "2025-10-21 02:11"
+      event: Cache pod evicted. orders-api logged connection refused errors for cache:6379.
+      action: None.
+      responsibility: Platform team
+    - timestamp: "2025-10-21 02:14"
+      event: Alert OrdersApiHighLatency fired.
+      action: On-call opened an incident.
+      responsibility: SRE on-call
+    - timestamp: "2025-10-21 02:29"
+      event: Cache pod found stuck in Pending, its volume bound to the drained node.
+      action: Asked the platform on-call to bring the node back.
+      responsibility: SRE on-call
+    - timestamp: "2025-10-21 02:33"
+      event: Node back in the cluster.
+      action: Restarted the cache statefulset.
+      responsibility: Platform on-call
+    - timestamp: "2025-10-21 02:36"
+      event: Latency back to normal.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why was checkout slow?
+      answer: orders-api could not reach the cache and read everything from orders-db.
+    - question: Why could it not reach the cache?
+      answer: The only cache pod was evicted during a node drain.
+    - question: Why did the drain evict the only pod?
+      answer: The cache statefulset had no PodDisruptionBudget.
+    - question: Why did the pod not start again on another node?
+      answer: Its volume was bound to the drained node.
+    - question: Why was this not found earlier?
+      answer: There was no alert on the cache itself, and drains did not check for single replica services.
+  fishbone:
+    - category: environment
+      issues:
+        - Single cache replica with a node-bound volume.
+    - category: process
+      issues:
+        - Node drains run without a check for single replica services.
+    - category: data
+      issues:
+        - No alert on cache availability, only on orders-api latency.
+  root_causes:
+    - The cache ran as a single pod with no PodDisruptionBudget, so a planned drain took it down.
+    - Its volume was bound to one node, so the pod could not move to another node.
+  action_items:
+    - action: Add a PodDisruptionBudget for the cache.
+      owner: Platform team
+      due_date: "2025-10-31"
+    - action: Alert when redis-cli ping fails for 2 minutes.
+      owner: SRE team
+      due_date: "2025-10-31"
+    - action: Write SOP-CACHE-001.
+      owner: Omar Haddad
+      due_date: "2025-11-14"

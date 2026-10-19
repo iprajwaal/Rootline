@@ -1,0 +1,91 @@
+render_as: md
+
+meta:
+  doc_id: SOP-CACHE-001
+  doc_type: sop
+  title: Recover orders-api when the cache is down
+  services: [cache, orders-api]
+  owner: Platform team
+  revision: 1
+  effective_date: "2026-02-03"
+  supersedes: null
+  related: [RCA-2025-031]
+
+record:
+  purpose: >-
+    Bring the cache back when orders-api cannot reach it. Without the cache every read goes to
+    orders-db and checkout gets slow.
+  scope: >-
+    Applies to the cache statefulset used by orders-api in the shop-prod cluster. Does not apply
+    to lost cache data. The cache holds nothing that is not also in orders-db.
+  when_to_use: >-
+    Use this procedure when the OrdersApiHighLatency alert fires and orders-api logs show
+    "redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused."
+  alerts: [OrdersApiHighLatency]
+  definitions:
+    - term: Cache
+      meaning: The Redis instance orders-api uses for product and price reads.
+    - term: StatefulSet
+      meaning: The Kubernetes object that runs the cache pod with a fixed name and volume.
+    - term: PodDisruptionBudget
+      meaning: A rule that stops Kubernetes from evicting too many pods of a service at once.
+  roles:
+    - role: On-call engineer
+      responsibility: Runs the procedure and posts each result in the incident channel.
+    - role: Platform on-call
+      responsibility: Fixes node and volume problems that stop the cache pod from starting.
+  related_documents:
+    - 'RCA-2025-031: slow checkout while the cache pod was evicted during a node drain.'
+  prerequisites:
+    - kubectl access to the shop namespace.
+  overview: >-
+    Confirm the cache does not answer and that orders-api is falling back to the database,
+    restart the cache, then confirm it answers and latency recovers.
+  steps:
+    - ordinal: 1
+      instruction: Confirm the cache does not answer.
+      command: redis-cli -h cache ping
+      check_name: cache_ping
+      expect: Connection refused instead of PONG.
+      responsibility: On-call engineer
+    - ordinal: 2
+      instruction: Confirm orders-api is falling back to the database.
+      command: kubectl -n shop logs deploy/orders-api --since=15m
+      check_name: logs
+      expect: ConnectionError lines for cache:6379.
+      responsibility: On-call engineer
+    - ordinal: 3
+      instruction: Restart the cache.
+      command: kubectl -n shop rollout restart statefulset/cache
+      action: restart_cache
+      expect: The cache pod is running and ready.
+      responsibility: On-call engineer
+    - ordinal: 4
+      instruction: Confirm the cache answers again.
+      command: redis-cli -h cache ping
+      check_name: cache_ping
+      expect: PONG.
+      responsibility: On-call engineer
+  verification:
+    - p95 latency on orders-api is back under 300 ms.
+    - No new ConnectionError lines in orders-api logs for 5 minutes.
+  troubleshooting:
+    - symptom: The cache pod stays Pending after the restart.
+      action: >-
+        Its volume may be bound to a drained node. Run kubectl -n shop describe pod cache-0 and
+        page the platform on-call.
+    - symptom: The cache answers but latency stays high.
+      action: The cache is cold. Latency should recover within 10 minutes as keys fill again.
+  escalation:
+    - Page the platform on-call if the cache pod is not ready 10 minutes after step 3.
+  security_notes:
+    - Do not run FLUSHALL. It clears every key and sends all reads to orders-db at once.
+  compliance:
+    - Restarting the cache is a standard change. Record it in the incident ticket.
+  review_cycle: Reviewed every 6 months.
+  records: Each run is recorded in the incident ticket.
+  revision_history:
+    - revision: 1
+      date: "2026-02-03"
+      author: Omar Haddad
+      change: First version, written after RCA-2025-031.

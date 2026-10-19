@@ -1,0 +1,95 @@
+render_as: md
+
+meta:
+  doc_id: RCA-2025-022
+  doc_type: rca
+  title: Orders queue consumer lag after flash sale
+  services: [orders-worker, order-queue]
+  owner: Orders team
+  revision: 1
+  effective_date: "2025-08-19"
+  supersedes: null
+  related: [SOP-QUEUE-002]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    A flash sale sent four times the normal order volume. Two workers could not keep up and the
+    orders topic built a backlog of 52,000 messages. Orders were taken but confirmed up to 25
+    minutes late.
+  authors: [Luis Romero]
+  stakeholders: [Luis Romero, Mei Chen, Marketing team]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2025-08-15"
+  start_time: "2025-08-15 18:09 UTC"
+  duration: 38 minutes
+  severity: Medium
+  trigger: Alert OrderQueueConsumerLagHigh
+  problem_statement: >-
+    During a flash sale the orders topic received about 1,200 messages per second against a
+    normal 300. Two orders-worker replicas processed about 700 per second, so consumer lag grew
+    to 52,000 and order confirmations were delayed.
+  impact_description: >-
+    External customers who ordered during the sale. Orders were accepted, but confirmation
+    emails and stock updates were late. No other service was affected.
+  impact_metrics: >-
+    No downtime. Confirmations were up to 25 minutes late for about 9,000 orders. No orders were
+    lost and no SLA was breached.
+  customer_feedback: 112 support contacts asking whether their order went through.
+  immediate_resolution: Scaled orders-worker from 2 to 4 replicas. Scaled back to 2 the next morning.
+  timeline:
+    - timestamp: "2025-08-15 18:00"
+      event: Flash sale started.
+      action: None. The sale was not on the capacity calendar.
+      responsibility: Marketing team
+    - timestamp: "2025-08-15 18:09"
+      event: Alert OrderQueueConsumerLagHigh fired with lag at 14,000.
+      action: On-call opened an incident and followed SOP-QUEUE-001.
+      responsibility: SRE on-call
+    - timestamp: "2025-08-15 18:15"
+      event: Workers restarted. Lag kept growing.
+      action: Asked the orders team for help.
+      responsibility: SRE on-call
+    - timestamp: "2025-08-15 18:22"
+      event: Orders team joined.
+      action: Scaled orders-worker from 2 to 4 replicas.
+      responsibility: Orders team
+    - timestamp: "2025-08-15 18:47"
+      event: Lag back under 1,000.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why were order confirmations late?
+      answer: Consumer lag on the orders topic reached 52,000 messages.
+    - question: Why did lag grow?
+      answer: Messages arrived at 1,200 per second and two workers processed about 700 per second.
+    - question: Why were only two workers running?
+      answer: Worker count is fixed and sized for normal traffic.
+    - question: Why was it not scaled before the sale?
+      answer: The sale was not on the capacity calendar, so nobody knew traffic would rise.
+    - question: Why did the first response not help?
+      answer: SOP-QUEUE-001 said to restart workers, which does not add capacity.
+  fishbone:
+    - category: process
+      issues:
+        - Sales events are not added to the capacity calendar.
+        - The lag procedure restarted workers instead of scaling them.
+      whys:
+        - Marketing and engineering plan events separately.
+    - category: tools
+      issues:
+        - Workers do not autoscale on consumer lag.
+  root_causes:
+    - Worker capacity was fixed at normal traffic levels and the sale was not planned for.
+    - The lag procedure in use restarted workers, which added no capacity.
+  action_items:
+    - action: Replace SOP-QUEUE-001 with a procedure that scales consumers.
+      owner: Luis Romero
+      due_date: "2025-08-22"
+    - action: Add sales events to the capacity calendar.
+      owner: Marketing team
+      due_date: "2025-09-01"
+    - action: Autoscale workers on consumer lag.
+      owner: Orders team
+      due_date: "2025-10-15"
