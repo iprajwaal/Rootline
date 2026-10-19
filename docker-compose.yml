@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: rootline
+      POSTGRES_PASSWORD: rootline
+      POSTGRES_DB: rootline
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rootline"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    image: rootline-app:dev
+    command: uvicorn rootline.api.app:app --host 0.0.0.0 --port 8000
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+
+  agent:
+    image: rootline-app:dev
+    depends_on:
+      - api
+    command: langgraph dev --host 0.0.0.0 --port 2024 --no-browser --no-reload
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "2024:2024"
+
+  ui:
+    build: ui
+    depends_on:
+      - agent
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
