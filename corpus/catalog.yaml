@@ -1,0 +1,111 @@
+# Shared names for the ShopLite sandbox. Ingestion uses services and aliases to tag documents.
+# ShopLite must use the same fault, check and action names, and SOP steps refer to them.
+
+services:
+  orders-api:
+    aliases: [orders, orders service, order-service, orders-svc, shoplite-api, api]
+    depends_on: [orders-db, cache, order-queue, payment-gateway]
+  orders-worker:
+    aliases: [worker, order-worker, orders consumer, consumer]
+    depends_on: [order-queue, orders-db]
+  orders-db:
+    aliases: [postgres, postgresql, pg, database, db]
+    depends_on: []
+  cache:
+    aliases: [redis, orders-cache]
+    depends_on: []
+  order-queue:
+    aliases: [queue, kafka, orders topic, orders-topic]
+    depends_on: []
+  payment-gateway:
+    aliases: [payments, payment-api, psp, payment provider]
+    depends_on: []
+
+faults:
+  db_pool_exhausted:
+    service: orders-api
+    alert: OrdersDbPoolExhausted
+    severity: critical
+    error: "psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec"
+    http_status: 503
+    reveal_check: db_connections
+    fix_action: raise_pool_limit
+    docs: greenfield
+  queue_consumer_lag:
+    service: orders-worker
+    alert: OrderQueueConsumerLagHigh
+    severity: warning
+    error: "consumer group orders-worker lag=48211 on topic orders exceeds threshold=10000"
+    http_status: 200
+    reveal_check: queue_lag
+    fix_action: scale_consumers
+    docs: greenfield
+  cache_down:
+    service: cache
+    alert: OrdersApiHighLatency
+    severity: critical
+    error: "redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused."
+    http_status: 200
+    reveal_check: cache_ping
+    fix_action: restart_cache
+    docs: greenfield
+  payment_key_expired:
+    service: payment-gateway
+    alert: PaymentAuthFailures
+    severity: critical
+    error: "payment-gateway returned 401 Unauthorized: api key expired"
+    http_status: 502
+    reveal_check: key_status
+    fix_action: rotate_payment_key
+    docs: brownfield
+  disk_full:
+    service: orders-api
+    alert: OrdersApiDiskFull
+    severity: critical
+    error: "OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'"
+    http_status: 500
+    reveal_check: disk_usage
+    fix_action: clear_tmp
+    # No SOP or RCA on purpose. This fault tests the "nothing covers this" path.
+    docs: none
+  bad_config_deploy:
+    service: orders-api
+    alert: OrdersApiCrashLooping
+    severity: critical
+    error: "config error: PAYMENT_GATEWAY_URL is not set"
+    http_status: 503
+    reveal_check: config_diff
+    fix_action: rollback_config
+    docs: greenfield
+  worker_oom:
+    service: orders-worker
+    alert: OrdersWorkerOOMKilled
+    severity: warning
+    error: "orders-worker container killed: OOMKilled (exit code 137)"
+    http_status: 200
+    reveal_check: memory_usage
+    fix_action: restart_worker
+    docs: brownfield
+
+# Read-only diagnostics. Safe to run without approval.
+checks:
+  health: "curl -s http://orders-api:8080/health"
+  logs: "kubectl -n shop logs deploy/orders-api --since=15m"
+  db_connections: "psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\""
+  queue_lag: "kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker"
+  cache_ping: "redis-cli -h cache ping"
+  key_status: "shopctl secrets describe payment-gateway-key"
+  disk_usage: "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite"
+  config_diff: "kubectl -n shop rollout history deploy/orders-api --revision=2"
+  memory_usage: "kubectl -n shop top pod -l app=orders-worker"
+
+# Changes state. Runs only after human approval.
+actions:
+  raise_pool_limit: "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50"
+  restart_api: "kubectl -n shop rollout restart deploy/orders-api"
+  scale_consumers: "kubectl -n shop scale deploy/orders-worker --replicas=4"
+  restart_cache: "kubectl -n shop rollout restart statefulset/cache"
+  rotate_payment_key: "shopctl secrets rotate payment-gateway-key"
+  clear_tmp: "kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete"
+  rollback_config: "kubectl -n shop rollout undo deploy/orders-api"
+  restart_worker: "kubectl -n shop rollout restart deploy/orders-worker"
