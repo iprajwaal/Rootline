@@ -1,0 +1,25 @@
+{
+  "solution": "Read the error printed just before the pod exits, compare the config with the previous revision, and only then roll back.",
+  "short_description": "Handling a bad deploy that caused orders-api to crash loop",
+  "authors": [],
+  "stakeholders": [
+    "release owner"
+  ],
+  "status": "",
+  "environment": "",
+  "incident_date": null,
+  "start_time": null,
+  "duration": "",
+  "severity": null,
+  "trigger": "A bad deploy left orders-api crash looping",
+  "problem_statement": "orders-api was left crash looping due to a bad deploy.",
+  "impact_description": "orders-api was crash looping, and a previous outage lasted longer because a broken deploy got pushed again when rolling back blind.",
+  "impact_metrics": "",
+  "customer_feedback": "",
+  "immediate_resolution": "Read the error printed just before the pod exits, compare the config with the previous revision, and only then roll back, after telling the release owner.",
+  "timeline": [],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [],
+  "action_items": []
+}

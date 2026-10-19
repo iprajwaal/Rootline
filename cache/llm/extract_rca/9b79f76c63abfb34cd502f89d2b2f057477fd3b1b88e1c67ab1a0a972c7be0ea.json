@@ -1,0 +1,28 @@
+{
+  "solution": "Jonas found the batch flag",
+  "short_description": "Worker OOM in June due to month-end batch pulling whole month of orders into memory",
+  "authors": [],
+  "stakeholders": [
+    "Jonas",
+    "support"
+  ],
+  "status": "",
+  "environment": "",
+  "incident_date": "2023-06",
+  "start_time": null,
+  "duration": "1 hour",
+  "severity": "",
+  "trigger": "month-end batch",
+  "problem_statement": "Workers kept dying at the end of June because the month-end batch pulled the whole month of orders into memory.",
+  "impact_description": "Confirmations were about forty minutes late and support got around twenty tickets.",
+  "impact_metrics": "20 support tickets",
+  "customer_feedback": "",
+  "immediate_resolution": "Jonas found the batch flag after an hour.",
+  "timeline": [],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "month-end batch pulled the whole month of orders into memory"
+  ],
+  "action_items": []
+}

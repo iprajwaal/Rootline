@@ -1,0 +1,46 @@
+{
+  "purpose": "Troubleshoot slow checkout at night",
+  "scope": "Checkout cache pod and latency",
+  "when_to_use": "When checkout gets slow at night",
+  "alerts": [
+    "Don't flush the cache, it makes things worse."
+  ],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Look at whether the cache pod is running before anything else.",
+      "command": null,
+      "action": null,
+      "check_name": "cache pod running",
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "If it is stuck in Pending, ask the platform people to bring its node back, then restart the cache statefulset and watch the latency graph for ten minutes.",
+      "command": null,
+      "action": "ask the platform people to bring its node back, then restart the cache statefulset and watch the latency graph for ten minutes",
+      "check_name": null,
+      "expect": null,
+      "responsibility": "platform people",
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}
