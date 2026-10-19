@@ -7,15 +7,16 @@ from typing import Any
 from rootline.config import Settings
 from rootline.ingest.classify import (
     AskLlm,
-    LlmVerdict,
     classify,
     llm_prompt,
     needs_review,
     template_label,
 )
+from rootline.ingest.factory import label_asker
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
-from rootline.llm.structured import StructuredLLM
+from rootline.llm.ledger import PostgresLedger
+from rootline.llm.structured import build_llm
 from rootline.models import Classification, ParsedDoc
 
 CORPUS = Path("corpus")
@@ -92,8 +93,8 @@ def summary(rows: list[dict[str, Any]]) -> list[str]:
 
 def main() -> None:
     settings = Settings()
-    llm = StructuredLLM(settings.llm_small_model, settings.google_api_key, settings.llm_cache_dir)
-    rows = evaluate(CORPUS, lambda prompt: llm.ask("classify", prompt, LlmVerdict))
+    llm = build_llm(settings, PostgresLedger(settings.database_url).record)
+    rows = evaluate(CORPUS, label_asker(llm))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text("".join(json.dumps(row) + "\n" for row in rows))
     print("\n".join(summary(rows)))

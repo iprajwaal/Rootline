@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -10,6 +11,9 @@ from rootline.db.migrate import migrate
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer
 from rootline.ingest.store import Store
+
+# Tests never send traces, even when .env holds Langfuse keys.
+os.environ.update(LANGFUSE_PUBLIC_KEY="", LANGFUSE_SECRET_KEY="")
 
 TEST_DB = "rootline_test"
 SEARCH_DB = "rootline_search_test"
@@ -58,7 +62,8 @@ def offline_settings() -> Settings:
 
 @pytest.fixture(scope="session")
 def analyzer(offline_settings: Settings) -> Analyzer:
-    return build_analyzer(offline_settings)
+    # Ledger rows are checked in their own tests; the shared analyzer writes none.
+    return build_analyzer(offline_settings, record=lambda call: None)
 
 
 @pytest.fixture

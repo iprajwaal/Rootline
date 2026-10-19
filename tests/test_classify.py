@@ -1,4 +1,3 @@
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,7 @@ from rootline.ingest.classify import (
 from rootline.ingest.document_builder import DocBuilder
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
-from rootline.llm.structured import LLMUnavailable, StructuredLLM
+from rootline.llm.structured import LLMUnavailable
 from rootline.models import ParsedDoc
 
 CORPUS = Path(__file__).parents[1] / "corpus"
@@ -112,14 +111,3 @@ def test_llm_outage_keeps_rule_result_and_flags_review() -> None:
 
     assert result.method == "rules"
     assert needs_review(result)
-
-
-def test_cached_answer_is_used_without_an_api_key(tmp_path: Path) -> None:
-    llm = StructuredLLM(model="test-model", api_key="", cache_dir=tmp_path)
-    key = hashlib.sha256(b"classify\ntest-model\nsome prompt").hexdigest()
-    (tmp_path / "classify").mkdir()
-    (tmp_path / "classify" / f"{key}.json").write_text(verdict("sop").model_dump_json())
-
-    assert llm.ask("classify", "some prompt", LlmVerdict).label == "sop"
-    with pytest.raises(LLMUnavailable):
-        llm.ask("classify", "another prompt", LlmVerdict)

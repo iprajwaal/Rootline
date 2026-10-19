@@ -6,31 +6,39 @@ import psycopg
 from rootline.catalog import load_catalog
 from rootline.config import Settings
 from rootline.ingest.analysis import Analyzer
-from rootline.ingest.classify import LlmVerdict
+from rootline.ingest.classify import CLASSIFY_PROMPT_VERSION, AskLlm, LlmVerdict
 from rootline.ingest.embedding import Embedder
-from rootline.ingest.extract import Record
+from rootline.ingest.extract import EXTRACT_PROMPT_VERSION, AskRecord, Record
 from rootline.ingest.parsing import PARSERS
 from rootline.ingest.store import Outcome, Store
-from rootline.llm.structured import StructuredLLM
+from rootline.llm.ledger import PostgresLedger, RecordCall
+from rootline.llm.structured import StructuredLLM, build_llm
 from rootline.models import RcaRecord, SopRecord
 
 
-def build_analyzer(settings: Settings) -> Analyzer:
-    llm = StructuredLLM(settings.llm_small_model, settings.google_api_key, settings.llm_cache_dir)
-
-    def ask_label(prompt: str) -> LlmVerdict:
-        return llm.ask("classify", prompt, LlmVerdict)
-
-    def ask_record(prompt: str, label: Literal["sop", "rca"]) -> Record:
-        schema: type[Record] = SopRecord if label == "sop" else RcaRecord
-        return llm.ask(f"extract_{label}", prompt, schema)
-
+def build_analyzer(settings: Settings, record: RecordCall | None = None) -> Analyzer:
+    llm = build_llm(settings, record or PostgresLedger(settings.database_url).record)
     return Analyzer(
         catalog=load_catalog(settings.catalog_path),
         embedder=Embedder(settings.embed_model, settings.model_cache_dir),
-        ask_label=ask_label,
-        ask_record=ask_record,
+        ask_label=label_asker(llm),
+        ask_record=record_asker(llm),
     )
+
+
+def label_asker(llm: StructuredLLM) -> AskLlm:
+    def ask_label(prompt: str) -> LlmVerdict:
+        return llm.ask("classify", prompt, LlmVerdict, CLASSIFY_PROMPT_VERSION)
+
+    return ask_label
+
+
+def record_asker(llm: StructuredLLM) -> AskRecord:
+    def ask_record(prompt: str, label: Literal["sop", "rca"]) -> Record:
+        schema: type[Record] = SopRecord if label == "sop" else RcaRecord
+        return llm.ask(f"extract_{label}", prompt, schema, EXTRACT_PROMPT_VERSION)
+
+    return ask_record
 
 
 def build_store(conn: psycopg.Connection[Any], settings: Settings, analyzer: Analyzer) -> Store:

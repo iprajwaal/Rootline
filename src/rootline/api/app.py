@@ -1,9 +1,11 @@
+import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from functools import cache
 from typing import Annotated, Any
 
 import psycopg
-from fastapi import Depends, FastAPI, Form, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from rootline.config import Settings
@@ -11,10 +13,26 @@ from rootline.incidents import AlertmanagerWebhook, IncidentResult, Incidents
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
+from rootline.llm.ledger import REQUEST_ID
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
 
 app = FastAPI(title="rootline")
+
+
+@app.middleware("http")
+async def tag_request(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    # The caller's ID is kept short because it is stored with every ledger row.
+    request_id = request.headers.get("x-request-id", "")[:64] or uuid.uuid4().hex
+    token = REQUEST_ID.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        REQUEST_ID.reset(token)
+    response.headers["x-request-id"] = request_id
+    return response
 
 
 class SuggestRequest(BaseModel):
