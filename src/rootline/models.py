@@ -13,10 +13,12 @@ class Block(BaseModel):
     level: int = 0
     start: int
     end: int
+    rows: list[list[str]] = []
 
 
 class ParsedDoc(BaseModel):
     source_key: str
+    source_format: str
     title: str
     fields: dict[str, Any] = {}
     blocks: list[Block]
