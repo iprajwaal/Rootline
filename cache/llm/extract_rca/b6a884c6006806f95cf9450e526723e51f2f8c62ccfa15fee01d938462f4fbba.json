@@ -1,0 +1,42 @@
+{
+  "solution": "Rotate the payment provider API key",
+  "short_description": "Payment API key expired causing checkouts to fail",
+  "authors": [],
+  "stakeholders": [
+    "Diego",
+    "Ana",
+    "payments on-call"
+  ],
+  "status": "resolved",
+  "environment": "production",
+  "incident_date": "2024-05-01",
+  "start_time": "00:00",
+  "duration": "almost an hour",
+  "severity": "high",
+  "trigger": "Payment provider API key expiration",
+  "problem_statement": "The key used for the payment provider expired, causing every card payment to fail with a 401 error.",
+  "impact_description": "Every card payment came back with a 401 error, causing checkouts to fail.",
+  "impact_metrics": "About 1,900 checkouts failed",
+  "customer_feedback": "",
+  "immediate_resolution": "Ana found the expiry date with shopctl, and rotated the key once the payments on-call gave her the permission.",
+  "timeline": [
+    {
+      "timestamp": "00:00",
+      "event": "The key used for the payment provider expired.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "00:30",
+      "event": "Ana got paged.",
+      "action": "Found the expiry date with shopctl, and rotated the key once the payments on-call gave her the permission.",
+      "responsibility": "Ana"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The payment provider API key expired and the renewal email went to an inactive mailbox."
+  ],
+  "action_items": []
+}

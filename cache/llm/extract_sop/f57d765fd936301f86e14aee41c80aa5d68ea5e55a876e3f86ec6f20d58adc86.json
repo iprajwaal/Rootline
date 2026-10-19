@@ -1,0 +1,66 @@
+{
+  "purpose": "",
+  "scope": "",
+  "when_to_use": "",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "kubectl -n shop top pod -l app=orders-worker and look for pods near 512Mi",
+      "command": "kubectl -n shop top pod -l app=orders-worker",
+      "action": "look for pods near 512Mi",
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "kubectl -n shop get pods -l app=orders-worker and check the restart count",
+      "command": "kubectl -n shop get pods -l app=orders-worker",
+      "action": "check the restart count",
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "kubectl -n shop rollout restart deploy/orders-worker",
+      "command": "kubectl -n shop rollout restart deploy/orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "if it keeps happening, kubectl -n shop rollout undo deploy/orders-worker",
+      "command": "kubectl -n shop rollout undo deploy/orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

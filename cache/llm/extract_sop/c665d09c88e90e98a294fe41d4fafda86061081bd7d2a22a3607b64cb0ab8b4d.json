@@ -1,0 +1,68 @@
+{
+  "purpose": "To handle a bad deploy of orders-api that causes crash looping.",
+  "scope": "orders-api deployment",
+  "when_to_use": "When a deploy leaves orders-api crash looping.",
+  "alerts": [
+    "Rolling back blind without reading the error is what made the March outage last longer, because the same broken deploy got pushed again."
+  ],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Read the error printed just before the pod exits.",
+      "command": null,
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Compare the config with the previous revision.",
+      "command": null,
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Tell the release owner before you roll back.",
+      "command": null,
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Roll back.",
+      "command": null,
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

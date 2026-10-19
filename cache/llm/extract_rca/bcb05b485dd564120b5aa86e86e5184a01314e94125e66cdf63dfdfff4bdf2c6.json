@@ -1,0 +1,26 @@
+{
+  "solution": "Omar brought the node back and the cache came up a few minutes later.",
+  "short_description": "Checkout page slowed to a crawl due to missing cache pod after kernel maintenance.",
+  "authors": [],
+  "stakeholders": [],
+  "status": "Resolved",
+  "environment": "Production",
+  "incident_date": "Tuesday night",
+  "start_time": null,
+  "duration": "about twenty minutes",
+  "severity": null,
+  "trigger": "A customer complained on social media",
+  "problem_statement": "Tuesday night the checkout page slowed to a crawl for about twenty minutes because the cache pod had been moved during the kernel maintenance and never came back, causing orders-api to read everything straight from the database.",
+  "impact_description": "The checkout page slowed to a crawl.",
+  "impact_metrics": "",
+  "customer_feedback": "A customer complained on social media.",
+  "immediate_resolution": "Omar brought the node back and the cache came up a few minutes later.",
+  "timeline": [],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The cache pod had been moved during the kernel maintenance and never came back.",
+    "There is no alert on the cache itself."
+  ],
+  "action_items": []
+}

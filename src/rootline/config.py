@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://rootline:rootline@localhost:5432/rootline"
     raw_dir: Path = Path("data/raw")
     catalog_path: Path = Path("corpus/catalog.yaml")
+    embed_model: str = "BAAI/bge-small-en-v1.5"
+    model_cache_dir: Path = Path("data/models")
     google_api_key: str = ""
     llm_small_model: str = "gemini-3.5-flash-lite"
     llm_cache_dir: Path = Path("cache/llm")
