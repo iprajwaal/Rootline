@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check up down
+.PHONY: install lint typecheck test check corpus up down
 
 install:
 	uv sync
@@ -14,6 +14,9 @@ test:
 	uv run pytest -q
 
 check: lint typecheck test
+
+corpus:
+	uv run python -m rootline.corpus.render
 
 up:
 	docker compose up --build
