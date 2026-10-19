@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 0.95,
+  "reason": "The document describes a past incident including a timeline, impact (1900 failed checkouts), root cause (expired key sent to an old mailbox), and resolution, despite having a misleading runbook title."
+}

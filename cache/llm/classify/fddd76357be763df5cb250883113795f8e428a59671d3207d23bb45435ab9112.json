@@ -1,0 +1,5 @@
+{
+  "label": "mixed",
+  "confidence": 1.0,
+  "reason": "The document contains both a complete post-incident analysis (summary, timeline, cause, and follow-ups for the June 503 errors) and a procedural remediation guide with steps, commands, and rollback instructions."
+}

@@ -1,0 +1,5 @@
+{"file": "hard/hard-01.txt", "doc_type": "rca", "note": "narrative only, no headings or timestamps"}
+{"file": "hard/hard-02.txt", "doc_type": "sop", "note": "instructions in prose, no numbered steps or commands"}
+{"file": "hard/hard-03.md", "doc_type": "rca", "note": "titled as a runbook but the body is an incident story"}
+{"file": "hard/hard-04.txt", "doc_type": "mixed", "note": "incident story followed by unlabelled numbered steps"}
+{"file": "hard/hard-05.txt", "doc_type": "sop", "note": "past tense framing, but the body is advice on how to do it"}

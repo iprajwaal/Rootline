@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document provides a step-by-step procedure to resolve a specific alert and connection error, including preconditions, commands, expected outputs, and escalation instructions, characteristic of a Standard Operating Procedure (SOP)."
+}

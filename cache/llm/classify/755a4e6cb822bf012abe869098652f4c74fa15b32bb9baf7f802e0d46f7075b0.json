@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document consists of a step-by-step procedure with prerequisites, specific commands, expected outputs, and a rollback action to follow when an alert fires."
+}

@@ -1,0 +1,3 @@
+note for whoever is on call
+
+If checkout gets slow at night, look at whether the cache pod is running before anything else. If it is stuck in Pending, ask the platform people to bring its node back, then restart the cache statefulset and watch the latency graph for ten minutes. Don't flush the cache, it makes things worse.

@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document provides a step-by-step procedure to resolve a specific alert and includes prerequisite checks, numbered operational steps, expected outcomes, a rollback section, and escalation instructions."
+}

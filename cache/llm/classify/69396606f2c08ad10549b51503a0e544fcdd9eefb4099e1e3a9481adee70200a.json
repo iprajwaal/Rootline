@@ -1,0 +1,5 @@
+{
+  "label": "mixed",
+  "confidence": 1.0,
+  "reason": "The document contains a complete incident review with a timeline, root cause analysis, and follow-ups, but it also includes explicit operational steps, commands, and a rollback procedure under 'When to use' and 'Steps'."
+}

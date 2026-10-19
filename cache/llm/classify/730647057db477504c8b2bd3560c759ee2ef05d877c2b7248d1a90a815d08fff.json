@@ -1,0 +1,5 @@
+{
+  "label": "sop",
+  "confidence": 1.0,
+  "reason": "The document provides step-by-step instructions, commands, checks, and rollback procedures to follow when handling a specific deployment alert, which fits the definition of a Standard Operating Procedure (SOP)."
+}

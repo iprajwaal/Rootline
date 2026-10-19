@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 1.0,
+  "reason": "The document is a detailed post-incident review containing a summary of what broke, a detailed timeline of events, root cause analysis explaining why it happened, and follow-up action items. It lacks standard sequential step-by-step operational procedures intended for regular execution."
+}
