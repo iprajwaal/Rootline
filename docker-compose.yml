@@ -1,3 +1,12 @@
+x-app: &app
+  build: .
+  image: rootline-app:dev
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -15,24 +24,28 @@ services:
       timeout: 3s
       retries: 20
 
+  migrate:
+    <<: *app
+    command: python -m rootline.db.migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
-    build: .
-    image: rootline-app:dev
+    <<: *app
     command: uvicorn rootline.api.app:app --host 0.0.0.0 --port 8000
-    env_file:
-      - path: .env
-        required: false
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
 
   agent:
-    image: rootline-app:dev
-    depends_on:
-      - api
+    <<: *app
     command: langgraph dev --host 0.0.0.0 --port 2024 --no-browser --no-reload
-    env_file:
-      - path: .env
-        required: false
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "2024:2024"
 
