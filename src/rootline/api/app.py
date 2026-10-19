@@ -4,14 +4,21 @@ from typing import Annotated, Any
 
 import psycopg
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel, Field
 
 from rootline.config import Settings
+from rootline.incidents import AlertmanagerWebhook, IncidentResult, Incidents
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
 from rootline.retrieval.search import Searcher, SearchResponse
+from rootline.retrieval.suggest import Suggester, SuggestResponse
 
 app = FastAPI(title="rootline")
+
+
+class SuggestRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=100_000)
 
 
 @cache
@@ -69,3 +76,24 @@ def search(
 ) -> SearchResponse:
     with psycopg.connect(settings.database_url) as conn:
         return Searcher(conn, analyzer.embedder, analyzer.catalog.services).search(q)
+
+
+@app.post("/suggest")
+def suggest(
+    request: SuggestRequest, settings: SettingsDep, analyzer: AnalyzerDep
+) -> SuggestResponse:
+    with psycopg.connect(settings.database_url) as conn:
+        return suggester(conn, analyzer).suggest(request.text)
+
+
+@app.post("/incidents")
+def receive_alerts(
+    webhook: AlertmanagerWebhook, settings: SettingsDep, analyzer: AnalyzerDep
+) -> list[IncidentResult]:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        return Incidents(conn, suggester(conn, analyzer)).receive(webhook)
+
+
+def suggester(conn: psycopg.Connection[Any], analyzer: Analyzer) -> Suggester:
+    searcher = Searcher(conn, analyzer.embedder, analyzer.catalog.services)
+    return Suggester(searcher, analyzer.catalog.alerts)
