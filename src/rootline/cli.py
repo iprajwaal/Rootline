@@ -1,4 +1,5 @@
 import argparse
+import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import psycopg
 
 from rootline.config import Settings
 from rootline.ingest.factory import build_analyzer, build_store, ingest_path
+from rootline.llm.ledger import REQUEST_ID
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -18,6 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     delete.add_argument("source_key")
     args = parser.parse_args(argv)
 
+    REQUEST_ID.set(uuid.uuid4().hex)
     settings = Settings()
     with psycopg.connect(settings.database_url, autocommit=True) as conn:
         store = build_store(conn, settings, build_analyzer(settings))
