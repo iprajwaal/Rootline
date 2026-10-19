@@ -1,18 +1,20 @@
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from rootline.catalog import load_catalog
 from rootline.config import Settings
 from rootline.corpus.layout import load_document
-from rootline.ingest.classify import LlmVerdict, classify, split_mixed, template_label
+from rootline.ingest.classify import classify, split_mixed, template_label
 from rootline.ingest.extract import Record, extract
+from rootline.ingest.factory import label_asker, record_asker
 from rootline.ingest.facts import extract_facts
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
-from rootline.llm.structured import StructuredLLM
-from rootline.models import ParsedDoc, RcaRecord, SopRecord
+from rootline.llm.ledger import PostgresLedger
+from rootline.llm.structured import StructuredLLM, build_llm
+from rootline.models import ParsedDoc, SopRecord
 
 CORPUS = Path("corpus")
 OUTPUT = Path("eval/runs/extraction.jsonl")
@@ -31,12 +33,8 @@ def evaluate(corpus: Path, llm: StructuredLLM) -> list[dict[str, Any]]:
     catalog = load_catalog(corpus / "catalog.yaml")
     sources = source_records(corpus)
 
-    def ask_label(prompt: str) -> LlmVerdict:
-        return llm.ask("classify", prompt, LlmVerdict)
-
-    def ask_record(prompt: str, label: Literal["sop", "rca"]) -> Record:
-        schema: type[Record] = SopRecord if label == "sop" else RcaRecord
-        return llm.ask(f"extract_{label}", prompt, schema)
+    ask_label = label_asker(llm)
+    ask_record = record_asker(llm)
 
     rows = []
     truth = (corpus / "ground_truth" / "brownfield.jsonl").read_text().splitlines()
@@ -100,7 +98,7 @@ def summary(rows: list[dict[str, Any]]) -> list[str]:
 
 def main() -> None:
     settings = Settings()
-    llm = StructuredLLM(settings.llm_small_model, settings.google_api_key, settings.llm_cache_dir)
+    llm = build_llm(settings, PostgresLedger(settings.database_url).record)
     rows = evaluate(CORPUS, llm)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text("".join(json.dumps(row) + "\n" for row in rows))

@@ -16,6 +16,8 @@ UNSURE_LOW, UNSURE_HIGH = 0.3, 0.7
 REVIEW_BELOW = 0.7
 MIXED_MIN_SHARE = 0.25
 PROMPT_CHARS = 3000
+# Bump when the prompt wording changes. The ledger and traces group calls by it.
+CLASSIFY_PROMPT_VERSION = "classify-v1"
 
 STORY_SECTIONS = (
     "timeline",

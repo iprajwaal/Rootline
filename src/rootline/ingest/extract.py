@@ -14,6 +14,8 @@ INSTRUCTION_MIN = 90.0
 RCA_FACT_MIN = 85.0
 RCA_GROUNDED_SHARE = 0.8
 PROMPT_CHARS = 8000
+# Bump when the prompt wording changes. The ledger and traces group calls by it.
+EXTRACT_PROMPT_VERSION = "extract-v1"
 
 Record = SopRecord | RcaRecord
 AskRecord = Callable[[str, Literal["sop", "rca"]], Record]
