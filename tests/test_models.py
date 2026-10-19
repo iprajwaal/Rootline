@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from rootline.models import Classification, SopRecord, SopStep
+from rootline.models import Classification, FishboneBranch, RcaRecord, SopRecord, SopStep
 
 
 def steps(*ordinals: int) -> list[SopStep]:
@@ -34,3 +34,15 @@ def test_sop_record_json_round_trip_keeps_step_order() -> None:
 def test_classification_rejects_confidence_above_one() -> None:
     with pytest.raises(ValidationError):
         Classification(label="sop", confidence=1.2, method="rules")
+
+
+def test_rca_record_accepts_partial_fields() -> None:
+    record = RcaRecord(problem_statement="orders failed", root_causes=["pool too small"])
+
+    assert record.timeline == []
+    assert record.five_whys == []
+
+
+def test_fishbone_rejects_unknown_category() -> None:
+    with pytest.raises(ValidationError):
+        FishboneBranch.model_validate({"category": "infrastructure", "issues": ["node drain"]})

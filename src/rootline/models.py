@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 DocType = Literal["rca", "sop", "ref"]
 BlockKind = Literal["heading", "paragraph", "list_item", "code", "table"]
+FishboneCategory = Literal["process", "people", "tools", "environment", "data", "external"]
 
 
 class Block(BaseModel):
@@ -17,9 +18,21 @@ class Block(BaseModel):
 class ParsedDoc(BaseModel):
     source_key: str
     title: str
-    front_matter: dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     blocks: list[Block]
     text: str
+
+
+class DocMeta(BaseModel):
+    doc_id: str
+    doc_type: DocType
+    title: str
+    services: list[str]
+    owner: str = ""
+    revision: int = 1
+    effective_date: str | None = None
+    supersedes: str | None = None
+    related: list[str] = []
 
 
 class SopStep(BaseModel):
@@ -29,18 +42,53 @@ class SopStep(BaseModel):
     action: str | None = None
     check_name: str | None = None
     expect: str | None = None
+    responsibility: str | None = None
     source_start: int | None = None
     source_end: int | None = None
 
 
+class Term(BaseModel):
+    term: str
+    meaning: str
+
+
+class Role(BaseModel):
+    role: str
+    responsibility: str
+
+
+class TroubleshootingEntry(BaseModel):
+    symptom: str
+    action: str
+
+
+class Revision(BaseModel):
+    revision: int
+    date: str
+    author: str
+    change: str
+
+
 class SopRecord(BaseModel):
     purpose: str = ""
+    scope: str = ""
     when_to_use: str = ""
     alerts: list[str] = []
+    definitions: list[Term] = []
+    roles: list[Role] = []
+    related_documents: list[str] = []
     prerequisites: list[str] = []
+    overview: str = ""
     steps: list[SopStep]
     verification: list[str] = []
     rollback: list[SopStep] = []
+    troubleshooting: list[TroubleshootingEntry] = []
+    escalation: list[str] = []
+    security_notes: list[str] = []
+    compliance: list[str] = []
+    review_cycle: str = ""
+    records: str = ""
+    revision_history: list[Revision] = []
 
     @field_validator("steps", "rollback")
     @classmethod
@@ -52,20 +100,56 @@ class SopRecord(BaseModel):
         return steps
 
 
+class TimelineEvent(BaseModel):
+    timestamp: str
+    event: str
+    action: str = ""
+    responsibility: str = ""
+
+
+class Why(BaseModel):
+    question: str
+    answer: str
+
+
+class FishboneBranch(BaseModel):
+    category: FishboneCategory
+    issues: list[str]
+    whys: list[str] = []
+
+
+class ActionItem(BaseModel):
+    action: str
+    owner: str = ""
+    due_date: str | None = None
+
+
 class RcaRecord(BaseModel):
-    summary: str = ""
-    impact: str = ""
-    severity: str | None = None
+    solution: str = ""
+    short_description: str = ""
+    authors: list[str] = []
+    stakeholders: list[str] = []
+    status: str = ""
+    environment: str = ""
     incident_date: str | None = None
-    timeline: list[str] = []
-    root_cause: str = ""
-    contributing_factors: list[str] = []
-    resolution: str = ""
-    action_items: list[str] = []
+    start_time: str | None = None
+    duration: str = ""
+    severity: str | None = None
+    trigger: str = ""
+    problem_statement: str = ""
+    impact_description: str = ""
+    impact_metrics: str = ""
+    customer_feedback: str = ""
+    immediate_resolution: str = ""
+    timeline: list[TimelineEvent] = []
+    five_whys: list[Why] = []
+    fishbone: list[FishboneBranch] = []
+    root_causes: list[str] = []
+    action_items: list[ActionItem] = []
 
 
 class Classification(BaseModel):
     label: Literal["rca", "sop", "mixed", "unknown"]
     confidence: float = Field(ge=0.0, le=1.0)
-    method: Literal["front_matter", "rules", "llm"]
+    method: Literal["template", "rules", "llm"]
     evidence: list[str] = []
