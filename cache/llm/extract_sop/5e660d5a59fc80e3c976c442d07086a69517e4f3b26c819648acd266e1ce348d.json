@@ -1,0 +1,79 @@
+{
+  "purpose": "Replace the payment-gateway API key when it has expired or is about to expire.",
+  "scope": "",
+  "when_to_use": "Use this when the PaymentAuthFailures alert fires, or orders-api logs show \"payment-gateway returned 401 Unauthorized: api key expired\".",
+  "alerts": [],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Check the key status.",
+      "command": "shopctl secrets describe payment-gateway-key",
+      "action": null,
+      "check_name": null,
+      "expect": "expires_at is in the past or within 7 days.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Confirm checkout is failing on auth.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "action": null,
+      "check_name": null,
+      "expect": "401 Unauthorized lines from payment-gateway.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Rotate the key.",
+      "command": "shopctl secrets rotate payment-gateway-key",
+      "action": null,
+      "check_name": null,
+      "expect": "A new key id is printed and the old key is revoked in 24 hours.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Restart orders-api so it loads the new key.",
+      "command": "kubectl -n shop rollout restart deploy/orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": "The rollout completes.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 5,
+      "instruction": "Confirm payments work again.",
+      "command": "curl -s http://orders-api:8080/health",
+      "action": null,
+      "check_name": null,
+      "expect": "Status ok and payment-gateway ok.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [],
+  "troubleshooting": [],
+  "escalation": [
+    "Page the payments team on-call if 401s continue after step 5."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

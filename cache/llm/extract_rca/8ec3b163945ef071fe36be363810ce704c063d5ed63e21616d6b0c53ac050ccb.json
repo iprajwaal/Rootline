@@ -1,0 +1,78 @@
+{
+  "solution": "Scaled orders-worker from 2 to 4 replicas. Scaled back to 2 the next morning.",
+  "short_description": "Orders queue consumer lag after flash sale",
+  "authors": [
+    "Luis Romero"
+  ],
+  "stakeholders": [
+    "Orders team",
+    "Marketing team"
+  ],
+  "status": "Closed",
+  "environment": "",
+  "incident_date": "2025-08-15",
+  "start_time": "18:00",
+  "duration": "47 minutes",
+  "severity": "",
+  "trigger": "A flash sale sent four times the normal order volume.",
+  "problem_statement": "Two workers could not keep up and the orders topic built a backlog of 52,000 messages. Orders were taken but confirmed up to 25 minutes late.",
+  "impact_description": "No downtime. Confirmations were up to 25 minutes late for about 9,000 orders. No orders were lost and no SLA was breached.",
+  "impact_metrics": "9000 orders delayed up to 25 minutes, backlog of 52000 messages",
+  "customer_feedback": "",
+  "immediate_resolution": "Scaled orders-worker from 2 to 4 replicas.",
+  "timeline": [
+    {
+      "timestamp": "2025-08-15 18:00",
+      "event": "Flash sale started. None. The sale was not on the capacity calendar.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-08-15 18:09",
+      "event": "Alert OrderQueueConsumerLagHigh fired with lag at 14,000. On-call opened an incident and followed SOP-QUEUE-001.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-08-15 18:15",
+      "event": "Workers restarted. Lag kept growing. Asked the orders team for help.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-08-15 18:22",
+      "event": "Orders team joined. Scaled orders-worker from 2 to 4 replicas.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2025-08-15 18:47",
+      "event": "Lag back under 1,000. Closed the incident.",
+      "action": "",
+      "responsibility": ""
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "Worker capacity was fixed at normal traffic levels and the sale was not planned for.",
+    "The lag procedure in use restarted workers, which added no capacity."
+  ],
+  "action_items": [
+    {
+      "action": "Replace SOP-QUEUE-001 with a procedure that scales consumers.",
+      "owner": "Luis Romero",
+      "due_date": null
+    },
+    {
+      "action": "Add sales events to the capacity calendar.",
+      "owner": "Marketing team",
+      "due_date": null
+    },
+    {
+      "action": "Autoscale workers on consumer lag.",
+      "owner": "Orders team",
+      "due_date": null
+    }
+  ]
+}

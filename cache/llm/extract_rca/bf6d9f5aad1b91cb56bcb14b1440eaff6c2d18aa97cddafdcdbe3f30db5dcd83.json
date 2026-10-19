@@ -1,0 +1,79 @@
+{
+  "solution": "Rotated the key with shopctl and restarted orders-api.",
+  "short_description": "checkout payments failing after the payment api key expired",
+  "authors": [
+    "Ana Souza",
+    "Mei Chen"
+  ],
+  "stakeholders": [
+    "Payments team",
+    "SRE team"
+  ],
+  "status": "closed",
+  "environment": "",
+  "incident_date": "2026-05-02",
+  "start_time": "00:00",
+  "duration": "51 minutes",
+  "severity": "",
+  "trigger": "The payment-gateway API key expired at 00:00 UTC.",
+  "problem_statement": "The payment-gateway API key expired at 00:00 UTC. orders-api got 401 from the payment provider for every card payment for 51 minutes, until the key was rotated.",
+  "impact_description": "About 1,900 checkout attempts failed.",
+  "impact_metrics": "51 minutes without card payments. About 1,900 checkout attempts failed.",
+  "customer_feedback": "",
+  "immediate_resolution": "Key rotated and orders-api restarted. Watched the 401 rate fall to zero.",
+  "timeline": [
+    {
+      "timestamp": "2026-05-02 00:00",
+      "event": "Payment API key expired.",
+      "action": "None.",
+      "responsibility": "The expiry reminder went to an old mailbox."
+    },
+    {
+      "timestamp": "2026-05-02 00:07",
+      "event": "Alert PaymentAuthFailures fired.",
+      "action": "On-call opened an incident.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-05-02 00:31",
+      "event": "On-call found the expired key with shopctl secrets describe.",
+      "action": "Paged the payments team on-call for the rotate permission.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-05-02 00:52",
+      "event": "Key rotated and orders-api restarted.",
+      "action": "Watched the 401 rate fall to zero.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-05-02 00:58",
+      "event": "Card payments working again.",
+      "action": "Closed the incident.",
+      "responsibility": ""
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The key expiry reminder went to an unmonitored mailbox, so the key expired unnoticed.",
+    "Nothing alerted on keys close to expiry."
+  ],
+  "action_items": [
+    {
+      "action": "Send key expiry reminders to the payments team group address.",
+      "owner": "Payments team",
+      "due_date": null
+    },
+    {
+      "action": "Alert 14 days before any third-party key expires.",
+      "owner": "SRE team",
+      "due_date": null
+    },
+    {
+      "action": "Give the SRE on-call permission to rotate the payment key.",
+      "owner": "Payments team",
+      "due_date": null
+    }
+  ]
+}

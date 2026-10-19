@@ -1,0 +1,62 @@
+{
+  "purpose": "roll back a bad orders-api deploy",
+  "scope": "orders-api deploy in the shop namespace",
+  "when_to_use": "when the OrdersApiCrashLooping alert fires right after a deploy",
+  "alerts": [
+    "OrdersApiCrashLooping"
+  ],
+  "definitions": [],
+  "roles": [],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace."
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Roll back to the previous revision.",
+      "command": "kubectl -n shop rollout undo deploy/orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": "The rollout finishes.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Confirm the API is healthy.",
+      "command": "curl -s http://orders-api:8080/health",
+      "action": null,
+      "check_name": null,
+      "expect": "Status ok.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [
+    {
+      "ordinal": 1,
+      "instruction": "Re-apply the new revision.",
+      "command": "kubectl -n shop rollout undo deploy/orders-api",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team if the rollback does not finish."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

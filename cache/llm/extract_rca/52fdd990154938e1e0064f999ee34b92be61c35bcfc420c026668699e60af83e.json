@@ -1,0 +1,94 @@
+{
+  "solution": "Rolled orders-api back to 5.1, then redeployed 5.2 later the same day with the new config map mounted.",
+  "short_description": "orders api crash loop after deploy with missing config",
+  "authors": [
+    "Sara Kim"
+  ],
+  "stakeholders": [
+    "Tom Becker"
+  ],
+  "status": "",
+  "environment": "",
+  "incident_date": "2026-03-12",
+  "start_time": "16:40",
+  "duration": "17 minutes",
+  "severity": "",
+  "trigger": "orders-api 5.2 was deployed with a config map that no longer had PAYMENT_GATEWAY_URL",
+  "problem_statement": "orders-api 5.2 was deployed with a config map that no longer had PAYMENT_GATEWAY_URL. The app exits on start when that variable is missing, so every pod crash looped and no orders could be placed for 17 minutes.",
+  "impact_description": "Full outage of order creation for 17 minutes. About 2,300 checkout attempts failed. The monthly availability target of 99.9% was missed.",
+  "impact_metrics": "17 minutes outage, 2,300 checkout attempts failed",
+  "customer_feedback": "",
+  "immediate_resolution": "Ran kubectl -n shop rollout undo deploy/orders-api.",
+  "timeline": [
+    {
+      "timestamp": "2026-03-12 16:40",
+      "event": "orders-api 5.2 deploy started.",
+      "action": "None.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:42",
+      "event": "Alert OrdersApiCrashLooping fired.",
+      "action": "On-call followed SOP-DEPLOY-001 and rolled back.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:45",
+      "event": "The release owner, not knowing about the rollback, retried the 5.2 deploy. Pods crash looped again.",
+      "action": "",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:47",
+      "event": "On-call read the logs and found \"config error: PAYMENT_GATEWAY_URL is not set\".",
+      "action": "Told the release owner to stop deploys.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:52",
+      "event": "Rollout history showed the variable was dropped in the new revision.",
+      "action": "Confirmed the cause with the release owner.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:55",
+      "event": "Rollback to 5.1 started.",
+      "action": "Ran kubectl -n shop rollout undo deploy/orders-api.",
+      "responsibility": ""
+    },
+    {
+      "timestamp": "2026-03-12 16:59",
+      "event": "Pods running and orders flowing again.",
+      "action": "Closed the incident. 5.2 was redeployed at 19:30 with the config map mounted.",
+      "responsibility": ""
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start.",
+    "Neither CI nor the readiness probe checked for required config, so the bad revision reached every pod."
+  ],
+  "action_items": [
+    {
+      "action": "Write SOP-DEPLOY-002 that reads the start up error before rolling back.",
+      "owner": "Sara Kim",
+      "due_date": null
+    },
+    {
+      "action": "Fail CI when a required config key is missing.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Load config before the readiness probe reports ready.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Post every rollback in the deploy channel.",
+      "owner": "SRE team",
+      "due_date": null
+    }
+  ]
+}

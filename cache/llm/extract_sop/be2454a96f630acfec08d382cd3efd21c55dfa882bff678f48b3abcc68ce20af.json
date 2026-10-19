@@ -1,0 +1,100 @@
+{
+  "purpose": "fix consumer lag on the orders queue by scaling consumers",
+  "scope": "orders queue",
+  "when_to_use": "Use this procedure when the OrderQueueConsumerLagHigh alert fires, or when worker logs show \"consumer group orders-worker lag=... on topic orders exceeds threshold=10000\".",
+  "alerts": [
+    "OrderQueueConsumerLagHigh"
+  ],
+  "definitions": [],
+  "roles": [
+    {
+      "role": "orders team",
+      "responsibility": "owner"
+    }
+  ],
+  "related_documents": [],
+  "prerequisites": [
+    "kubectl access to the shop namespace. The orders topic has 6 partitions. More than 6 consumers adds nothing."
+  ],
+  "overview": "",
+  "steps": [
+    {
+      "ordinal": 1,
+      "instruction": "Check the consumer lag.",
+      "command": "kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "Lag above 10000 on one or more partitions.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 2,
+      "instruction": "Check worker memory before scaling.",
+      "command": "kubectl -n shop top pod -l app=orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "Memory under 80% of the limit and no recent restarts. If a worker is near its limit or restarting, stop here and follow the orders-worker OOM runbook.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 3,
+      "instruction": "Check the worker logs for slow payment calls.",
+      "command": "kubectl -n shop logs deploy/orders-worker --since=15m",
+      "action": null,
+      "check_name": null,
+      "expect": "No payment-gateway timeouts. If payment calls are slow, scaling helps little. Page the payments team on-call and continue.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 4,
+      "instruction": "Scale the consumers.",
+      "command": "kubectl -n shop scale deploy/orders-worker --replicas=4",
+      "action": null,
+      "check_name": null,
+      "expect": "4 worker pods running and every partition assigned.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    },
+    {
+      "ordinal": 5,
+      "instruction": "Check the lag again after five minutes.",
+      "command": "kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker",
+      "action": null,
+      "check_name": null,
+      "expect": "Lag is going down on every partition.",
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "verification": [],
+  "rollback": [
+    {
+      "ordinal": 1,
+      "instruction": "Scale back to the normal size once lag is under 1000. kubectl -n shop scale deploy/orders-worker --replicas=2",
+      "command": "kubectl -n shop scale deploy/orders-worker --replicas=2",
+      "action": null,
+      "check_name": null,
+      "expect": null,
+      "responsibility": null,
+      "source_start": null,
+      "source_end": null
+    }
+  ],
+  "troubleshooting": [],
+  "escalation": [
+    "page the orders team lead if lag is still growing 15 minutes after step 4."
+  ],
+  "security_notes": [],
+  "compliance": [],
+  "review_cycle": "",
+  "records": "",
+  "revision_history": []
+}

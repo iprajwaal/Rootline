@@ -1,0 +1,76 @@
+{
+  "solution": "Disabled the batch flag and restarted the workers. Move the month-end batch to its own scheduled job. Read orders in pages of 1,000 in the batch.",
+  "short_description": "orders-worker OOM runbook",
+  "authors": [],
+  "stakeholders": [
+    "Orders team",
+    "SRE on-call"
+  ],
+  "status": "Closed",
+  "environment": "orders-worker",
+  "incident_date": "2026-06-30",
+  "start_time": "23:15",
+  "duration": "just over an hour",
+  "severity": null,
+  "trigger": "Month-end report batch ran inside orders-worker and loaded every order of the month into memory",
+  "problem_statement": "orders-worker pods were killed with \"orders-worker container killed: OOMKilled (exit code 137)\" every few minutes.",
+  "impact_description": "Each restart paused the consumer group and order confirmations backed up. Workers hit their 512Mi limit and were killed again and again.",
+  "impact_metrics": "",
+  "customer_feedback": "",
+  "immediate_resolution": "Disabled the batch flag and restarted the workers.",
+  "timeline": [
+    {
+      "timestamp": "2026-06-30 23:15",
+      "event": "Month-end batch started inside orders-worker. None.",
+      "action": "",
+      "responsibility": "Orders team"
+    },
+    {
+      "timestamp": "2026-06-30 23:20",
+      "event": "Alert OrdersWorkerOOMKilled fired. On-call restarted the workers.",
+      "action": "restarted the workers",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2026-06-30 23:48",
+      "event": "Workers killed again within minutes of each restart. Paged the orders team.",
+      "action": "Paged the orders team",
+      "responsibility": "SRE on-call"
+    },
+    {
+      "timestamp": "2026-07-01 00:12",
+      "event": "Orders team found the batch loading the whole month into memory. Disabled the batch flag and restarted the workers.",
+      "action": "Disabled the batch flag and restarted the workers",
+      "responsibility": "Orders team"
+    },
+    {
+      "timestamp": "2026-07-01 00:25",
+      "event": "Workers stable and the backlog cleared. Closed the incident.",
+      "action": "Closed the incident",
+      "responsibility": "SRE on-call"
+    }
+  ],
+  "five_whys": [],
+  "fishbone": [],
+  "root_causes": [
+    "The month-end batch loaded all orders of the month into worker memory at once.",
+    "The batch ran inside orders-worker, so its memory use killed the order consumer too."
+  ],
+  "action_items": [
+    {
+      "action": "Move the month-end batch to its own scheduled job.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Read orders in pages of 1,000 in the batch.",
+      "owner": "Orders team",
+      "due_date": null
+    },
+    {
+      "action": "Stop orders-worker from being killed for memory and get orders flowing again.",
+      "owner": "",
+      "due_date": null
+    }
+  ]
+}
