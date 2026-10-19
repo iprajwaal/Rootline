@@ -1,0 +1,54 @@
+render_as: pdf
+
+meta:
+  doc_id: SOP-DEPLOY-001
+  doc_type: sop
+  title: Roll back a bad orders-api deploy
+  services: [orders-api]
+  owner: Orders team
+  revision: 1
+  effective_date: "2025-02-10"
+  supersedes: null
+  related: []
+
+record:
+  purpose: Return orders-api to the previous revision when a new deploy breaks it.
+  scope: Applies to orders-api deploys in the shop-prod cluster.
+  when_to_use: Use this procedure when the OrdersApiCrashLooping alert fires right after a deploy.
+  alerts: [OrdersApiCrashLooping]
+  roles:
+    - role: On-call engineer
+      responsibility: Runs the procedure.
+  prerequisites:
+    - kubectl access to the shop namespace.
+  overview: Roll back to the previous revision, then check health.
+  steps:
+    - ordinal: 1
+      instruction: Roll back to the previous revision.
+      command: kubectl -n shop rollout undo deploy/orders-api
+      action: rollback_config
+      expect: The rollout finishes.
+      responsibility: On-call engineer
+    - ordinal: 2
+      instruction: Confirm the API is healthy.
+      command: curl -s http://orders-api:8080/health
+      check_name: health
+      expect: Status ok.
+      responsibility: On-call engineer
+  verification:
+    - orders-api pods run with no restarts for 10 minutes.
+  rollback:
+    - ordinal: 1
+      instruction: Re-apply the new revision.
+      command: kubectl -n shop rollout undo deploy/orders-api
+      expect: The new revision is running again.
+      responsibility: On-call engineer
+  escalation:
+    - Page the orders team if the rollback does not finish.
+  review_cycle: Reviewed every year.
+  records: Note the rollback in the deploy channel.
+  revision_history:
+    - revision: 1
+      date: "2025-02-10"
+      author: Luis Romero
+      change: First version.

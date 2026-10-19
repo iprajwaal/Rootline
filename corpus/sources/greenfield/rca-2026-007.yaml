@@ -1,0 +1,110 @@
+render_as: docx
+
+meta:
+  doc_id: RCA-2026-007
+  doc_type: rca
+  title: Orders API crash loop after deploy with missing config
+  services: [orders-api]
+  owner: Orders team
+  revision: 1
+  effective_date: "2026-03-16"
+  supersedes: null
+  related: [SOP-DEPLOY-002]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    orders-api 5.2 was deployed with a config map that no longer had PAYMENT_GATEWAY_URL. The
+    app exits on start when that variable is missing, so every pod crash looped and no orders
+    could be placed for 17 minutes.
+  authors: [Sara Kim]
+  stakeholders: [Sara Kim, Tom Becker, Release owner, SRE on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2026-03-12"
+  start_time: "2026-03-12 16:42 UTC"
+  duration: 17 minutes
+  severity: Critical
+  trigger: Alert OrdersApiCrashLooping
+  problem_statement: >-
+    After the orders-api 5.2 deploy every pod went into CrashLoopBackOff. The logs showed
+    "config error: PAYMENT_GATEWAY_URL is not set" just before each exit. No orders could be
+    created.
+  impact_description: All external customers in all regions. Checkout failed for every request.
+  impact_metrics: >-
+    Full outage of order creation for 17 minutes. About 2,300 checkout attempts failed. The
+    monthly availability target of 99.9% was missed.
+  customer_feedback: 210 support tickets and 3 escalations from business customers.
+  immediate_resolution: >-
+    Rolled orders-api back to 5.1, then redeployed 5.2 later the same day with the new config
+    map mounted.
+  timeline:
+    - timestamp: "2026-03-12 16:40"
+      event: orders-api 5.2 deploy started.
+      action: None.
+      responsibility: Release owner
+    - timestamp: "2026-03-12 16:42"
+      event: Alert OrdersApiCrashLooping fired.
+      action: On-call followed SOP-DEPLOY-001 and rolled back.
+      responsibility: SRE on-call
+    - timestamp: "2026-03-12 16:45"
+      event: The release owner, not knowing about the rollback, retried the 5.2 deploy.
+      action: Pods crash looped again.
+      responsibility: Release owner
+    - timestamp: "2026-03-12 16:47"
+      event: 'On-call read the logs and found "config error: PAYMENT_GATEWAY_URL is not set".'
+      action: Told the release owner to stop deploys.
+      responsibility: SRE on-call
+    - timestamp: "2026-03-12 16:52"
+      event: Rollout history showed the variable was dropped in the new revision.
+      action: Confirmed the cause with the release owner.
+      responsibility: SRE on-call
+    - timestamp: "2026-03-12 16:55"
+      event: Rollback to 5.1 started.
+      action: Ran kubectl -n shop rollout undo deploy/orders-api.
+      responsibility: SRE on-call
+    - timestamp: "2026-03-12 16:59"
+      event: Pods running and orders flowing again.
+      action: Closed the incident. 5.2 was redeployed at 19:30 with the config map mounted.
+      responsibility: Release owner
+  five_whys:
+    - question: Why could no orders be placed?
+      answer: Every orders-api pod exited on start and crash looped.
+    - question: Why did the pods exit?
+      answer: PAYMENT_GATEWAY_URL was not set, and the app exits when a required setting is missing.
+    - question: Why was the setting missing?
+      answer: A config refactor moved payment settings to a new config map that the deploy did not mount.
+    - question: Why did the deploy not stop by itself?
+      answer: The readiness probe passed before config was loaded, and CI did not check required keys.
+    - question: Why did the outage last 17 minutes?
+      answer: The old procedure rolled back without reading the error, so the same deploy was retried.
+  fishbone:
+    - category: process
+      issues:
+        - SOP-DEPLOY-001 rolled back without finding the cause.
+        - The release owner was not told about the rollback.
+      whys:
+        - The procedure was written when deploys were rare and manual.
+    - category: tools
+      issues:
+        - No CI check for required config keys.
+        - The readiness probe passed before config was loaded.
+    - category: people
+      issues:
+        - Deploy and incident channels were separate, so the release owner missed the rollback.
+  root_causes:
+    - The deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start.
+    - Neither CI nor the readiness probe checked for required config, so the bad revision reached every pod.
+  action_items:
+    - action: Write SOP-DEPLOY-002 that reads the start up error before rolling back.
+      owner: Sara Kim
+      due_date: "2026-04-02"
+    - action: Fail CI when a required config key is missing.
+      owner: Orders team
+      due_date: "2026-03-27"
+    - action: Load config before the readiness probe reports ready.
+      owner: Orders team
+      due_date: "2026-04-30"
+    - action: Post every rollback in the deploy channel.
+      owner: SRE team
+      due_date: "2026-03-20"

@@ -1,0 +1,93 @@
+render_as: pdf
+
+meta:
+  doc_id: RCA-2026-011
+  doc_type: rca
+  title: Consumer lag on the orders queue after worker restarts
+  services: [orders-worker, order-queue]
+  owner: Orders team
+  revision: 1
+  effective_date: "2026-04-10"
+  supersedes: null
+  related: [SOP-QUEUE-002]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    A memory leak in orders-worker 2.7 made workers restart every 20 to 30 minutes. Each restart
+    forced a consumer group rebalance, and lag on the orders topic grew to 18,000 messages.
+  authors: [Jonas Weber]
+  stakeholders: [Jonas Weber, Mei Chen, SRE on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2026-04-08"
+  start_time: "2026-04-08 12:14 UTC"
+  duration: 48 minutes
+  severity: Medium
+  trigger: Alert OrderQueueConsumerLagHigh
+  problem_statement: >-
+    Consumer lag on the orders topic grew to 18,000 messages. orders-worker pods were killed with
+    "OOMKilled (exit code 137)" every 20 to 30 minutes. Scaling workers did not help, because
+    the new workers also ran out of memory and every restart paused all consumers.
+  impact_description: External customers in all regions. Order confirmations were late for two hours.
+  impact_metrics: Confirmations up to 15 minutes late for about 3,000 orders. No orders lost. No SLA breach.
+  customer_feedback: 18 support tickets. No escalations.
+  immediate_resolution: Rolled orders-worker back from 2.7 to 2.6.
+  timeline:
+    - timestamp: "2026-04-08 10:30"
+      event: orders-worker 2.7 released.
+      action: None.
+      responsibility: Orders team
+    - timestamp: "2026-04-08 11:05"
+      event: First worker restart with OOMKilled (exit code 137).
+      action: None. There was no alert on worker restarts.
+      responsibility: SRE on-call
+    - timestamp: "2026-04-08 12:14"
+      event: Alert OrderQueueConsumerLagHigh fired with lag at 12,500.
+      action: On-call followed SOP-QUEUE-002 and scaled workers to 4.
+      responsibility: SRE on-call
+    - timestamp: "2026-04-08 12:41"
+      event: Lag still growing. On-call saw the restart count.
+      action: Rolled orders-worker back to 2.6.
+      responsibility: SRE on-call
+    - timestamp: "2026-04-08 13:02"
+      event: Lag back under 1,000.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why did consumer lag grow?
+      answer: Workers kept restarting, and each restart paused all consumers for a rebalance of 20 to 40 seconds.
+    - question: Why did workers restart?
+      answer: They ran out of memory and were killed by Kubernetes.
+    - question: Why did they run out of memory?
+      answer: Version 2.7 cached every processed order in memory and never cleared the cache.
+    - question: Why was the leak not caught before release?
+      answer: The release pipeline has no long running memory test.
+    - question: Why did on-call scale instead of rolling back?
+      answer: The lag procedure did not say to check worker memory or restarts before scaling.
+  fishbone:
+    - category: process
+      issues:
+        - The lag procedure did not check worker health before scaling.
+    - category: tools
+      issues:
+        - No memory soak test in the worker release pipeline.
+    - category: data
+      issues:
+        - No alert on worker restarts.
+  root_causes:
+    - orders-worker 2.7 leaked memory through an order cache that was never cleared.
+    - The lag procedure scaled workers without first checking that they were healthy.
+  action_items:
+    - action: Fix the order cache and release orders-worker 2.7.1.
+      owner: Orders team
+      due_date: "2026-04-10"
+    - action: Add a worker memory check to SOP-QUEUE-002 before scaling.
+      owner: Mei Chen
+      due_date: "2026-04-17"
+    - action: Alert when a worker restarts more than twice in 30 minutes.
+      owner: SRE team
+      due_date: "2026-04-17"
+    - action: Add a memory soak test to the worker release pipeline.
+      owner: Orders team
+      due_date: "2026-05-29"

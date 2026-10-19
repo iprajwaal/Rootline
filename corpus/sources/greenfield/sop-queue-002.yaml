@@ -1,0 +1,116 @@
+render_as: docx
+
+meta:
+  doc_id: SOP-QUEUE-002
+  doc_type: sop
+  title: Fix consumer lag on the orders queue by scaling consumers
+  services: [orders-worker, order-queue]
+  owner: Orders team
+  revision: 2
+  effective_date: "2026-05-19"
+  supersedes: SOP-QUEUE-001
+  related: [RCA-2025-022, RCA-2026-003, RCA-2026-011]
+
+record:
+  purpose: >-
+    Clear a growing backlog on the orders topic by adding consumers, after ruling out a broken
+    worker or a slow dependency.
+  scope: >-
+    Applies to orders-worker in the shop-prod cluster when lag grows because consumers cannot
+    keep up. Does not apply when workers are crashing or restarting. Handle the worker crash
+    first with the orders-worker OOM runbook.
+  when_to_use: >-
+    Use this procedure when the OrderQueueConsumerLagHigh alert fires, or when worker logs show
+    "consumer group orders-worker lag=... on topic orders exceeds threshold=10000".
+  alerts: [OrderQueueConsumerLagHigh]
+  definitions:
+    - term: Consumer lag
+      meaning: The number of messages on the orders topic that the orders-worker group has not processed yet.
+    - term: Partition
+      meaning: The orders topic has 6 partitions. Each partition is read by one consumer at a time.
+    - term: Rebalance
+      meaning: A pause while partitions are reassigned to consumers. It happens when a worker joins, leaves or restarts.
+  roles:
+    - role: On-call engineer
+      responsibility: Runs the procedure and posts each result in the incident channel.
+    - role: Orders team lead
+      responsibility: Approves scaling above 4 replicas.
+    - role: Payments team on-call
+      responsibility: Looks into payment-gateway when payment calls are slow.
+  related_documents:
+    - 'SOP-QUEUE-001: older procedure that only restarted workers. Replaced by this one.'
+    - 'RCA-2025-022: lag after a flash sale, fixed by scaling.'
+    - 'RCA-2026-003: lag from slow payment calls, where scaling helped only a little.'
+    - 'RCA-2026-011: lag from worker restarts caused by a memory leak.'
+  prerequisites:
+    - kubectl access to the shop namespace.
+    - The orders topic has 6 partitions. More than 6 consumers adds nothing.
+  overview: >-
+    Measure the lag, rule out worker memory problems and slow payment calls, scale the
+    consumers, then confirm the lag falls. Scale back once the backlog is cleared.
+  steps:
+    - ordinal: 1
+      instruction: Check the consumer lag.
+      command: kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker
+      check_name: queue_lag
+      expect: Lag above 10000 on one or more partitions.
+      responsibility: On-call engineer
+    - ordinal: 2
+      instruction: Check worker memory before scaling.
+      command: kubectl -n shop top pod -l app=orders-worker
+      check_name: memory_usage
+      expect: >-
+        Memory under 80% of the limit and no recent restarts. If a worker is near its limit or
+        restarting, stop here and follow the orders-worker OOM runbook.
+      responsibility: On-call engineer
+    - ordinal: 3
+      instruction: Check the worker logs for slow payment calls.
+      command: kubectl -n shop logs deploy/orders-worker --since=15m
+      expect: >-
+        No payment-gateway timeouts. If payment calls are slow, scaling helps little. Page the
+        payments team on-call and continue.
+      responsibility: On-call engineer
+    - ordinal: 4
+      instruction: Scale the consumers.
+      command: kubectl -n shop scale deploy/orders-worker --replicas=4
+      action: scale_consumers
+      expect: 4 worker pods running and every partition assigned.
+      responsibility: On-call engineer
+    - ordinal: 5
+      instruction: Check the lag again after five minutes.
+      command: kafka-consumer-groups --bootstrap-server order-queue:9092 --describe --group orders-worker
+      check_name: queue_lag
+      expect: Lag is going down on every partition.
+      responsibility: On-call engineer
+  verification:
+    - Lag is under 1000 on every partition.
+    - No orders older than 5 minutes in pending.
+  rollback:
+    - ordinal: 1
+      instruction: Scale back to the normal size once lag is under 1000.
+      command: kubectl -n shop scale deploy/orders-worker --replicas=2
+      expect: 2 worker pods running and lag stays under 1000.
+      responsibility: On-call engineer
+  troubleshooting:
+    - symptom: Lag keeps growing after scaling.
+      action: Repeat steps 2 and 3. Restarting workers or slow payment calls are the usual causes.
+    - symptom: Some partitions show no owner.
+      action: A rebalance is in progress. Wait two minutes and check again.
+  escalation:
+    - Page the orders team lead if lag is still growing 15 minutes after step 4.
+    - Page the payments team on-call if payment calls time out.
+  security_notes:
+    - Do not reset consumer group offsets. Skipping messages loses orders.
+  compliance:
+    - Scaling between 2 and 6 replicas is a standard change. Record it in the incident ticket.
+  review_cycle: Reviewed every 6 months, and after any incident where this procedure was used.
+  records: Each run is recorded in the incident ticket with the lag before and after scaling.
+  revision_history:
+    - revision: 1
+      date: "2025-08-20"
+      author: Luis Romero
+      change: First version. Replaces SOP-QUEUE-001 after RCA-2025-022.
+    - revision: 2
+      date: "2026-05-19"
+      author: Mei Chen
+      change: Added the worker memory check after RCA-2026-011 and the payment check after RCA-2026-003.

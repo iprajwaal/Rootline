@@ -1,0 +1,107 @@
+render_as: docx
+
+meta:
+  doc_id: RCA-2025-014
+  doc_type: rca
+  title: Orders API outage from exhausted database connection pool
+  services: [orders-api, orders-db]
+  owner: Orders team
+  revision: 1
+  effective_date: "2025-06-06"
+  supersedes: null
+  related: [SOP-DB-001]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    For 38 minutes orders-api could not get database connections and returned 503 on about 12%
+    of checkout requests. A new sales report endpoint held connections while it ran slow
+    queries.
+  authors: [Priya Nair]
+  stakeholders: [Priya Nair, Tom Becker, Mei Chen, Database on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2025-06-03"
+  start_time: "2025-06-03 09:12 UTC"
+  duration: 38 minutes
+  severity: High
+  trigger: Alert OrdersDbPoolExhausted
+  problem_statement: >-
+    orders-api returned 503 on a share of checkout requests. Its logs showed
+    "psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec". Every pod had all 20
+    pool connections in use, and most of them were running the same reporting query.
+  impact_description: >-
+    External customers placing orders in the EU region. About 12% of checkout requests failed.
+    Other services were not affected.
+  impact_metrics: >-
+    Partial outage of 38 minutes. About 4,100 orders were delayed and none were lost, because
+    clients retried. No SLA breach. The monthly availability target stayed above 99.9%.
+  customer_feedback: 37 support tickets about failed checkout. No escalations from business customers.
+  immediate_resolution: >-
+    Raised the pool limit from 20 to 50 to restore checkout, then disabled the sales report
+    endpoint until its query was fixed.
+  timeline:
+    - timestamp: "2025-06-03 08:55"
+      event: orders-api 4.18 released with the new sales report endpoint.
+      action: None at the time.
+      responsibility: Orders team
+    - timestamp: "2025-06-03 09:12"
+      event: Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout errors.
+      action: On-call acknowledged and opened an incident channel.
+      responsibility: SRE on-call
+    - timestamp: "2025-06-03 09:24"
+      event: 20 of 20 pool connections in use per pod, most running the report query.
+      action: Asked the database on-call to review long running queries.
+      responsibility: SRE on-call
+    - timestamp: "2025-06-03 09:36"
+      event: Checkout still failing.
+      action: Raised DB_POOL_MAX to 50 on orders-api.
+      responsibility: SRE on-call
+    - timestamp: "2025-06-03 09:50"
+      event: Error rate back under 1%.
+      action: Disabled the sales report endpoint with its feature flag.
+      responsibility: Orders team
+  five_whys:
+    - question: Why did checkout requests fail?
+      answer: orders-api could not get a database connection within 30 seconds and returned 503.
+    - question: Why were no connections free?
+      answer: The new sales report endpoint held connections for 40 to 90 seconds per request.
+    - question: Why did the report hold connections so long?
+      answer: Its query scanned the full orders table and had no statement timeout.
+    - question: Why was this not caught before release?
+      answer: Load tests covered checkout only, and there was no alert on pool usage before it was full.
+    - question: Why do these gaps exist?
+      answer: Reporting and checkout share one pool, and the release checklist has no step for new heavy queries.
+  fishbone:
+    - category: process
+      issues:
+        - The release checklist has no review step for new heavy queries.
+      whys:
+        - The checklist was written before reports moved into orders-api.
+    - category: tools
+      issues:
+        - No statement timeout on report queries.
+        - Reports and checkout share one connection pool.
+      whys:
+        - The pool was sized for checkout traffic only.
+    - category: data
+      issues:
+        - No metric or alert on pool usage before exhaustion.
+      whys:
+        - Pool metrics were exported but not used in any alert.
+  root_causes:
+    - The sales report query held pool connections for up to 90 seconds with no statement timeout.
+    - Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout.
+  action_items:
+    - action: Add an alert at 80% pool usage.
+      owner: SRE team
+      due_date: "2025-06-13"
+    - action: Set a 30 second statement timeout on report queries.
+      owner: Orders team
+      due_date: "2025-06-13"
+    - action: Write SOP-DB-001 for pool exhaustion.
+      owner: Priya Nair
+      due_date: "2025-06-20"
+    - action: Move reports to a read replica with its own pool.
+      owner: Orders team
+      due_date: "2025-08-01"
