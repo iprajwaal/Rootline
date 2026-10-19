@@ -1,0 +1,55 @@
+meta:
+  doc_id: SOP-PAY-001
+  doc_type: sop
+  title: Rotate an expired payment-gateway API key
+  services: [payment-gateway, orders-api]
+  owner: Payments team
+  revision: 1
+  effective_date: "2025-09-12"
+  supersedes: null
+  related: [RCA-2026-015]
+
+record:
+  purpose: Replace the payment-gateway API key when it has expired or is about to expire.
+  when_to_use: >-
+    Use this when the PaymentAuthFailures alert fires, or orders-api logs show
+    "payment-gateway returned 401 Unauthorized: api key expired".
+  alerts: [PaymentAuthFailures]
+  prerequisites:
+    - Access to shopctl with the payments-admin role.
+    - Access to the payment provider dashboard.
+  steps:
+    - ordinal: 1
+      instruction: Check the key status.
+      command: shopctl secrets describe payment-gateway-key
+      check_name: key_status
+      expect: expires_at is in the past or within 7 days.
+    - ordinal: 2
+      instruction: Confirm checkout is failing on auth.
+      command: kubectl -n shop logs deploy/orders-api --since=15m
+      check_name: logs
+      expect: 401 Unauthorized lines from payment-gateway.
+    - ordinal: 3
+      instruction: Rotate the key.
+      command: shopctl secrets rotate payment-gateway-key
+      action: rotate_payment_key
+      expect: A new key id is printed and the old key is revoked in 24 hours.
+    - ordinal: 4
+      instruction: Restart orders-api so it loads the new key.
+      command: kubectl -n shop rollout restart deploy/orders-api
+      action: restart_api
+      expect: The rollout completes.
+    - ordinal: 5
+      instruction: Confirm payments work again.
+      command: curl -s http://orders-api:8080/health
+      check_name: health
+      expect: Status ok and payment-gateway ok.
+  verification:
+    - No 401 responses from payment-gateway for 10 minutes.
+  troubleshooting:
+    - symptom: The new key also gets 401.
+      action: The provider may not have activated it yet. Wait 2 minutes, then check the provider dashboard.
+  escalation:
+    - Page the payments team on-call if 401s continue after step 5.
+  security_notes:
+    - Never paste the key into chat or tickets. shopctl prints only the key id.

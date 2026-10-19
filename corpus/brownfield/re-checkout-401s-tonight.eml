@@ -1,0 +1,49 @@
+From: Ana Souza <ana.souza@shoplite.example>
+To: orders-eng@shoplite.example
+Subject: RE: RE: checkout payments failing after the payment api key expired
+Date: Sun, 03 May 2026 10:00:00 +0000
+Message-ID: <ce247d8151986760@shoplite.example>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Thanks all. Writing down what we know so far, proper RCA to follow.
+
+What happened: The payment-gateway API key expired at 00:00 UTC. orders-api g=
+ot 401 from the payment provider for every card payment for 51 minutes, until=
+ the key was rotated.
+Impact: 51 minutes without card payments. About 1,900 checkout attempts faile=
+d.
+
+Timeline (UTC):
+2026-05-02 00:00 Payment API key expired. None. The expiry reminder went to a=
+n old mailbox.
+2026-05-02 00:07 Alert PaymentAuthFailures fired. On-call opened an incident.
+2026-05-02 00:31 On-call found the expired key with shopctl secrets describe.=
+ Paged the payments team on-call for the rotate permission.
+2026-05-02 00:52 Key rotated and orders-api restarted. Watched the 401 rate f=
+all to zero.
+2026-05-02 00:58 Card payments working again. Closed the incident.
+
+Root cause: The key expiry reminder went to an unmonitored mailbox, so the ke=
+y expired unnoticed. Nothing alerted on keys close to expiry.
+Fix: Rotated the key with shopctl and restarted orders-api.
+
+Follow ups:
+- Send key expiry reminders to the payments team group address. (Payments tea=
+m)
+- Alert 14 days before any third-party key expires. (SRE team)
+- Give the SRE on-call permission to rotate the payment key. (Payments team)
+
+new key after rotation is pk_canary_5d2e9b7f1a4c8e3b, old one gets revoked to=
+morrow
+
+--
+Ana Souza
+Payments team
+
+On Sun, 03 May 2026, Mei Chen wrote:
+> Alert PaymentAuthFailures fired, is anyone looking?
+> Every card payment failed. orders-api logged "payment-gateway returned
+> 401 Unauthorized: api key expired" and returned 502 to checkout. The
+> key had a fixed 365 day lifetime.

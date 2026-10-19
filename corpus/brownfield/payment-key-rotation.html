@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : Rotate an expired payment-gateway API key</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Runbooks</div>
+<h1 id="title-heading">Rotate an expired payment-gateway API key</h1>
+<div class="page-metadata">Created by Payments team, last modified on 2025-09-12</div>
+<div id="main-content" class="wiki-content">
+<p>Replace the payment-gateway API key when it has expired or is about to expire.</p>
+<h2>When to use</h2>
+<p>Use this when the PaymentAuthFailures alert fires, or orders-api logs show &quot;payment-gateway returned 401 Unauthorized: api key expired&quot;.</p>
+<h2>Steps</h2>
+<table>
+<tr><th>#</th><th>What to do</th><th>Command</th><th>Expected</th></tr>
+<tr><td>1</td><td>Check the key status.</td><td><code>shopctl secrets describe payment-gateway-key</code></td><td>expires_at is in the past or within 7 days.</td></tr>
+<tr><td>2</td><td>Confirm checkout is failing on auth.</td><td><code>kubectl -n shop logs deploy/orders-api --since=15m</code></td><td>401 Unauthorized lines from payment-gateway.</td></tr>
+<tr><td>3</td><td>Rotate the key.</td><td><code>shopctl secrets rotate payment-gateway-key</code></td><td>A new key id is printed and the old key is revoked in 24 hours.</td></tr>
+<tr><td>4</td><td>Restart orders-api so it loads the new key.</td><td><code>kubectl -n shop rollout restart deploy/orders-api</code></td><td>The rollout completes.</td></tr>
+<tr><td>5</td><td>Confirm payments work again.</td><td><code>curl -s http://orders-api:8080/health</code></td><td>Status ok and payment-gateway ok.</td></tr>
+</table>
+<h2>Contacts</h2>
+<ul>
+<li>Page the payments team on-call if 401s continue after step 5.</li>
+</ul>
+<p>old key for reference: pk_canary_0c4a7e19b2d65f88</p>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

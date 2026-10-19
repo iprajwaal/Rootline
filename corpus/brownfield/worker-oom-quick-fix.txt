@@ -1,0 +1,22 @@
+recover orders-worker from out of memory kills
+(copied from the old wiki, owner: orders team, last checked 2026-07-02)
+
+Use this when the OrdersWorkerOOMKilled alert fires, or worker pods show "orders-worker container killed: OOMKilled (exit code 137)".
+
+before you start: kubectl access to the shop namespace.
+
+steps
+1) Check worker memory.
+   kubectl -n shop top pod -l app=orders-worker
+   should see: One or more workers close to the 512Mi limit.
+2) Check how often the workers restart.
+   kubectl -n shop get pods -l app=orders-worker
+   should see: RESTARTS above 2 in the last hour.
+3) Restart the workers.
+   kubectl -n shop rollout restart deploy/orders-worker
+   should see: Pods restart and memory drops.
+4) If restarts continue, roll back the worker release.
+   kubectl -n shop rollout undo deploy/orders-worker
+   should see: The previous worker version is running.
+
+if this does not help: page the orders team if workers still restart after step 4.

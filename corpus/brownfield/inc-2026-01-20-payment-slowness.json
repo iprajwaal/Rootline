@@ -1,0 +1,47 @@
+{
+  "channel": "inc-2026-01-20-orders-queue-consumer-lag-from-slow-paym",
+  "messages": [
+    {
+      "type": "message",
+      "user_name": "payment-provider",
+      "ts": "1768917720.000100",
+      "text": "payment-gateway p95 latency rose from 300 ms to 4 s. None. There was no alert on payment latency."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1768918200.000100",
+      "text": "Alert OrderQueueConsumerLagHigh fired with lag at 11,000. On-call followed SOP-QUEUE-002."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1768918680.000100",
+      "text": "Workers scaled from 2 to 4. Lag growth slowed but did not stop. Read the worker logs and found slow payment calls."
+    },
+    {
+      "type": "message",
+      "user_name": "payments-team-on-call",
+      "ts": "1768919700.000100",
+      "text": "The payment provider confirmed a problem on their side. Paged the payments team on-call."
+    },
+    {
+      "type": "message",
+      "user_name": "orders-team",
+      "ts": "1768920120.000100",
+      "text": "Payment client timeout lowered to 3 s and failed payments sent to the retry topic. Config change rolled out to orders-worker."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1768921080.000100",
+      "text": "Lag back under 1,000. Closed the incident."
+    },
+    {
+      "type": "message",
+      "user_name": "orders-team",
+      "ts": "1768922880.000100",
+      "text": "summary: The worker makes a blocking payment call inside the message loop, so a slow provider slows the whole consumer. The payment client timeout of 10 seconds let each slow call hold a worker for too long. fix: Lowered the payment client timeout from 10 seconds to 3 seconds and sent failed payments to the retry topic so the main loop kept moving."
+    }
+  ]
+}

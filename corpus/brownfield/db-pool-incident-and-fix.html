@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : Orders API 503s in June, what happened and how to fix it</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Incidents</div>
+<h1 id="title-heading">Orders API 503s in June, what happened and how to fix it</h1>
+<div class="page-metadata">Created by Priya Nair, last modified on 2025-06-06</div>
+<div id="main-content" class="wiki-content">
+<h2>Summary</h2>
+<p>For 38 minutes orders-api could not get database connections and returned 503 on about 12% of checkout requests. A new sales report endpoint held connections while it ran slow queries.</p>
+<h2>What happened</h2>
+<p>orders-api returned 503 on a share of checkout requests. Its logs showed &quot;psycopg_pool.PoolTimeout: couldn&#x27;t get a connection after 30.00 sec&quot;. Every pod had all 20 pool connections in use, and most of them were running the same reporting query.</p>
+<h2>Timeline</h2>
+<table>
+<tr><th>Time (UTC)</th><th>What</th><th>Who</th></tr>
+<tr><td>2025-06-03 08:55</td><td>orders-api 4.18 released with the new sales report endpoint. None at the time.</td><td>Orders team</td></tr>
+<tr><td>2025-06-03 09:12</td><td>Alert OrdersDbPoolExhausted fired. Logs showed PoolTimeout errors. On-call acknowledged and opened an incident channel.</td><td>SRE on-call</td></tr>
+<tr><td>2025-06-03 09:24</td><td>20 of 20 pool connections in use per pod, most running the report query. Asked the database on-call to review long running queries.</td><td>SRE on-call</td></tr>
+<tr><td>2025-06-03 09:36</td><td>Checkout still failing. Raised DB_POOL_MAX to 50 on orders-api.</td><td>SRE on-call</td></tr>
+<tr><td>2025-06-03 09:50</td><td>Error rate back under 1%. Disabled the sales report endpoint with its feature flag.</td><td>Orders team</td></tr>
+</table>
+<h2>Why it happened</h2>
+<ul>
+<li>The sales report query held pool connections for up to 90 seconds with no statement timeout.</li>
+<li>Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout.</li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li>Add an alert at 80% pool usage. (SRE team)</li>
+<li>Set a 30 second statement timeout on report queries. (Orders team)</li>
+<li>Write SOP-DB-001 for pool exhaustion. (Priya Nair)</li>
+<li>Move reports to a read replica with its own pool. (Orders team)</li>
+</ul>
+<p>Restore orders-api when every connection in its database pool is in use and requests fail while waiting for a connection.</p>
+<h2>When to use</h2>
+<p>Use this procedure when the OrdersDbPoolExhausted alert fires, or when orders-api returns 503 and logs &quot;psycopg_pool.PoolTimeout: couldn&#x27;t get a connection after 30.00 sec&quot;.</p>
+<h2>Steps</h2>
+<table>
+<tr><th>#</th><th>What to do</th><th>Command</th><th>Expected</th></tr>
+<tr><td>1</td><td>Confirm the API is failing on pool timeouts.</td><td><code>kubectl -n shop logs deploy/orders-api --since=15m</code></td><td>Repeated PoolTimeout lines in the last 15 minutes.</td></tr>
+<tr><td>2</td><td>Count open database connections.</td><td><code>psql -h orders-db -U shop -c &quot;select count(*) from pg_stat_activity&quot;</code></td><td>The count is at or near 20 times the number of orders-api pods.</td></tr>
+<tr><td>3</td><td>List long running queries that hold connections.</td><td><code>psql -h orders-db -U shop -c &quot;select pid, now() - query_start as age, query from pg_stat_activity where state &lt;&gt; &#x27;idle&#x27; order by age desc limit 10&quot;</code></td><td>Any query older than 60 seconds is posted in the incident channel with its pid.</td></tr>
+<tr><td>4</td><td>Raise the pool limit.</td><td><code>kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50</code></td><td>The rollout completes and new pods start with DB_POOL_MAX=50.</td></tr>
+<tr><td>5</td><td>Confirm the API is healthy.</td><td><code>curl -s http://orders-api:8080/health</code></td><td>Status ok and orders-db ok.</td></tr>
+</table>
+<h2>Rollback</h2>
+<ol>
+<li>Set the pool limit back once the long running queries are fixed. <code>kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20</code></li>
+</ol>
+<h2>Contacts</h2>
+<ul>
+<li>Page the orders team lead if the error rate is above 5% after step 5.</li>
+<li>Page the database on-call if orders-db rejects connections or a query cannot be stopped.</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

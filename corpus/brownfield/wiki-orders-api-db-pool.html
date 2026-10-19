@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : Recover orders-api from database connection pool exhaustion</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Runbooks</div>
+<h1 id="title-heading">Recover orders-api from database connection pool exhaustion</h1>
+<div class="page-metadata">Created by Orders team, last modified on 2024-03-02</div>
+<div id="main-content" class="wiki-content">
+<p>Restore orders-api when every connection in its database pool is in use and requests fail while waiting for a connection.</p>
+<h2>When to use</h2>
+<p>Use this procedure when the OrdersDbPoolExhausted alert fires, or when orders-api returns 503 and logs &quot;psycopg_pool.PoolTimeout: couldn&#x27;t get a connection after 30.00 sec&quot;.</p>
+<h2>Steps</h2>
+<table>
+<tr><th>#</th><th>What to do</th><th>Command</th><th>Expected</th></tr>
+<tr><td>1</td><td>Confirm the API is failing on pool timeouts.</td><td><code>kubectl -n shop logs deploy/orders-api --since=15m</code></td><td>Repeated PoolTimeout lines in the last 15 minutes.</td></tr>
+<tr><td>2</td><td>Count open database connections.</td><td><code>psql -h orders-db -U shop -c &quot;select count(*) from pg_stat_activity&quot;</code></td><td>The count is at or near 20 times the number of orders-api pods.</td></tr>
+<tr><td>3</td><td>List long running queries that hold connections.</td><td><code>psql -h orders-db -U shop -c &quot;select pid, now() - query_start as age, query from pg_stat_activity where state &lt;&gt; &#x27;idle&#x27; order by age desc limit 10&quot;</code></td><td>Any query older than 60 seconds is posted in the incident channel with its pid.</td></tr>
+<tr><td>4</td><td>Raise the pool limit.</td><td><code>kubectl -n shop set env deploy/orders-api DB_POOL_MAX=30</code></td><td>The rollout completes and new pods start with DB_POOL_MAX=30.</td></tr>
+<tr><td>5</td><td>Confirm the API is healthy.</td><td><code>curl -s http://orders-api:8080/health</code></td><td>Status ok and orders-db ok.</td></tr>
+</table>
+<h2>Rollback</h2>
+<ol>
+<li>Set the pool limit back once the long running queries are fixed. <code>kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20</code></li>
+</ol>
+<h2>Contacts</h2>
+<ul>
+<li>Page the orders team lead if the error rate is above 5% after step 5.</li>
+<li>Page the database on-call if orders-db rejects connections or a query cannot be stopped.</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>

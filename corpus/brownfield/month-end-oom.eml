@@ -1,0 +1,46 @@
+From: Jonas Weber <jonas.weber@shoplite.example>
+To: orders-eng@shoplite.example
+Subject: RE: RE: orders-worker killed for memory during the month-end batch
+Date: Wed, 01 Jul 2026 10:00:00 +0000
+Message-ID: <918221584b2aea29@shoplite.example>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Thanks all. Writing down what we know so far, proper RCA to follow.
+
+What happened: The month-end report batch ran inside orders-worker and loaded=
+ every order of the month into memory. Workers hit their 512Mi limit and were=
+ killed again and again for just over an hour.
+Impact: Confirmations up to 40 minutes late for about 5,200 orders. No orders=
+ lost.
+
+Timeline (UTC):
+2026-06-30 23:15 Month-end batch started inside orders-worker. None.
+2026-06-30 23:20 Alert OrdersWorkerOOMKilled fired. On-call restarted the wor=
+kers.
+2026-06-30 23:48 Workers killed again within minutes of each restart. Paged t=
+he orders team.
+2026-07-01 00:12 Orders team found the batch loading the whole month into mem=
+ory. Disabled the batch flag and restarted the workers.
+2026-07-01 00:25 Workers stable and the backlog cleared. Closed the incident.
+
+Root cause: The month-end batch loaded all orders of the month into worker me=
+mory at once. The batch ran inside orders-worker, so its memory use killed th=
+e order consumer too.
+Fix: Restarted the workers with the month-end batch disabled, then ran the ba=
+tch on a separate job.
+
+Follow ups:
+- Move the month-end batch to its own scheduled job. (Orders team)
+- Read orders in pages of 1,000 in the batch. (Orders team)
+
+--
+Jonas Weber
+Orders team
+
+On Wed, 01 Jul 2026, Luis Romero wrote:
+> Alert OrdersWorkerOOMKilled fired, is anyone looking?
+> orders-worker pods were killed with "orders-worker container killed:
+> OOMKilled (exit code 137)" every few minutes. Each restart paused the
+> consumer group and order confirmations backed up.

@@ -88,10 +88,24 @@ class Source:
 
 
 def load_source(path: Path) -> Source:
-    raw: dict[str, Any] = yaml.safe_load(path.read_text())
+    raw = read_yaml(path)
+    meta, record = parse_document(raw)
+    return Source(raw["render_as"], meta, record)
+
+
+def load_document(path: Path) -> tuple[DocMeta, SopRecord | RcaRecord]:
+    return parse_document(read_yaml(path))
+
+
+def parse_document(raw: dict[str, Any]) -> tuple[DocMeta, SopRecord | RcaRecord]:
     meta = DocMeta.model_validate(raw["meta"])
     record_type = SopRecord if meta.doc_type == "sop" else RcaRecord
-    return Source(raw["render_as"], meta, record_type.model_validate(raw["record"]))
+    return meta, record_type.model_validate(raw["record"])
+
+
+def read_yaml(path: Path) -> dict[str, Any]:
+    raw: dict[str, Any] = yaml.safe_load(path.read_text())
+    return raw
 
 
 def layout_for(source: Source) -> Layout:

@@ -1,0 +1,31 @@
+recover orders-api from database connection pool exhaustion
+(copied from the old wiki, owner: orders team, last checked 2026-07-14)
+
+Use this procedure when the OrdersDbPoolExhausted alert fires, or when orders-api returns 503 and logs "psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec".
+
+before you start: kubectl access to the shop namespace. Read access to orders-db with the shop user. orders-db max_connections is at least 300. Ask the database on-call if unsure.
+
+steps
+1) Confirm the API is failing on pool timeouts.
+   kubectl -n shop logs deploy/orders-api --since=15m
+   should see: Repeated PoolTimeout lines in the last 15 minutes.
+2) Count open database connections.
+   psql -h orders-db -U shop -c "select count(*) from pg_stat_activity"
+   should see: The count is at or near 20 times the number of orders-api pods.
+3) List long running queries that hold connections.
+   psql -h orders-db -U shop -c "select pid, now() - query_start as age, query from pg_stat_activity where state <> 'idle' order by age desc limit 10"
+   should see: Any query older than 60 seconds is posted in the incident channel with its pid.
+4) Raise the pool limit.
+   kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50
+   should see: The rollout completes and new pods start with DB_POOL_MAX=50.
+5) Confirm the API is healthy.
+   curl -s http://orders-api:8080/health
+   should see: Status ok and orders-db ok.
+
+to undo
+- Set the pool limit back once the long running queries are fixed. kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20
+
+notes
+psql login if you need it: user shop, password Canary-Db-Pass-7731
+
+if this does not help: page the orders team lead if the error rate is above 5% after step 5.

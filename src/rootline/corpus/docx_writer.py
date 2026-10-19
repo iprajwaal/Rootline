@@ -23,15 +23,19 @@ def write_docx(layout: Layout, path: Path) -> None:
         add_element(document, element)
 
     stamp = datetime.fromisoformat(layout.date) if layout.date else datetime(1980, 1, 1)
+    path.write_bytes(docx_bytes(document, layout.title, layout.author, stamp))
+
+
+def docx_bytes(document: DocxDocument, title: str, author: str, stamp: datetime) -> bytes:
     properties = document.core_properties
-    properties.title = layout.title
-    properties.author = layout.author
-    properties.last_modified_by = layout.author
+    properties.title = title
+    properties.author = author
+    properties.last_modified_by = author
     properties.created = properties.modified = stamp
 
     buffer = io.BytesIO()
     document.save(buffer)
-    path.write_bytes(with_fixed_zip_times(buffer.getvalue(), stamp))
+    return with_fixed_zip_times(buffer.getvalue(), stamp)
 
 
 def with_fixed_zip_times(data: bytes, stamp: datetime) -> bytes:

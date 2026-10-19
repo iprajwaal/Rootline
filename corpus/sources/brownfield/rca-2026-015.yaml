@@ -1,0 +1,87 @@
+meta:
+  doc_id: RCA-2026-015
+  doc_type: rca
+  title: Checkout payments failing after the payment API key expired
+  services: [payment-gateway, orders-api]
+  owner: Payments team
+  revision: 1
+  effective_date: "2026-05-06"
+  supersedes: null
+  related: [SOP-PAY-001]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    The payment-gateway API key expired at 00:00 UTC. orders-api got 401 from the payment
+    provider for every card payment for 51 minutes, until the key was rotated.
+  authors: [Ana Souza]
+  stakeholders: [Ana Souza, Mei Chen, Payments team on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2026-05-02"
+  start_time: "2026-05-02 00:07 UTC"
+  duration: 51 minutes
+  severity: High
+  trigger: Alert PaymentAuthFailures
+  problem_statement: >-
+    Every card payment failed. orders-api logged "payment-gateway returned 401 Unauthorized: api
+    key expired" and returned 502 to checkout. The key had a fixed 365 day lifetime.
+  impact_description: All external customers paying by card. Orders paid by voucher still worked.
+  impact_metrics: 51 minutes without card payments. About 1,900 checkout attempts failed.
+  customer_feedback: 140 support tickets and one escalation from a business customer.
+  immediate_resolution: Rotated the key with shopctl and restarted orders-api.
+  timeline:
+    - timestamp: "2026-05-02 00:00"
+      event: Payment API key expired.
+      action: None. The expiry reminder went to an old mailbox.
+      responsibility: Payments team
+    - timestamp: "2026-05-02 00:07"
+      event: Alert PaymentAuthFailures fired.
+      action: On-call opened an incident.
+      responsibility: SRE on-call
+    - timestamp: "2026-05-02 00:31"
+      event: On-call found the expired key with shopctl secrets describe.
+      action: Paged the payments team on-call for the rotate permission.
+      responsibility: SRE on-call
+    - timestamp: "2026-05-02 00:52"
+      event: Key rotated and orders-api restarted.
+      action: Watched the 401 rate fall to zero.
+      responsibility: Payments team on-call
+    - timestamp: "2026-05-02 00:58"
+      event: Card payments working again.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why did card payments fail?
+      answer: The payment provider rejected our API key with 401.
+    - question: Why was the key rejected?
+      answer: It reached its 365 day expiry.
+    - question: Why was it not rotated before expiry?
+      answer: The expiry reminder email went to a mailbox of an engineer who had left.
+    - question: Why did nobody else know?
+      answer: There was no alert on key expiry and no calendar entry for rotation.
+    - question: Why did recovery take 51 minutes?
+      answer: Only the payments team could rotate the key, and on-call had to page them first.
+  fishbone:
+    - category: people
+      issues:
+        - The reminder went to a former employee's mailbox.
+    - category: process
+      issues:
+        - No rotation calendar for third-party keys.
+    - category: tools
+      issues:
+        - No alert when a key is close to expiry.
+  root_causes:
+    - The key expiry reminder went to an unmonitored mailbox, so the key expired unnoticed.
+    - Nothing alerted on keys close to expiry.
+  action_items:
+    - action: Send key expiry reminders to the payments team group address.
+      owner: Payments team
+      due_date: "2026-05-09"
+    - action: Alert 14 days before any third-party key expires.
+      owner: SRE team
+      due_date: "2026-05-23"
+    - action: Give the SRE on-call permission to rotate the payment key.
+      owner: Payments team
+      due_date: "2026-05-16"

@@ -1,0 +1,82 @@
+meta:
+  doc_id: RCA-2026-019
+  doc_type: rca
+  title: orders-worker killed for memory during the month-end batch
+  services: [orders-worker, order-queue]
+  owner: Orders team
+  revision: 1
+  effective_date: "2026-07-03"
+  supersedes: null
+  related: [SOP-WORKER-001]
+
+record:
+  solution: ShopLite orders platform
+  short_description: >-
+    The month-end report batch ran inside orders-worker and loaded every order of the month into
+    memory. Workers hit their 512Mi limit and were killed again and again for just over an hour.
+  authors: [Jonas Weber]
+  stakeholders: [Jonas Weber, Luis Romero, SRE on-call]
+  status: Final
+  environment: GCP, production, europe-west1, GKE cluster shop-prod
+  incident_date: "2026-06-30"
+  start_time: "2026-06-30 23:20 UTC"
+  duration: 1 hour 5 minutes
+  severity: Medium
+  trigger: Alert OrdersWorkerOOMKilled
+  problem_statement: >-
+    orders-worker pods were killed with "orders-worker container killed: OOMKilled (exit code
+    137)" every few minutes. Each restart paused the consumer group and order confirmations
+    backed up.
+  impact_description: External customers in all regions. Order confirmations were late.
+  impact_metrics: Confirmations up to 40 minutes late for about 5,200 orders. No orders lost.
+  customer_feedback: 22 support tickets.
+  immediate_resolution: Restarted the workers with the month-end batch disabled, then ran the batch on a separate job.
+  timeline:
+    - timestamp: "2026-06-30 23:15"
+      event: Month-end batch started inside orders-worker.
+      action: None.
+      responsibility: Orders team
+    - timestamp: "2026-06-30 23:20"
+      event: Alert OrdersWorkerOOMKilled fired.
+      action: On-call restarted the workers.
+      responsibility: SRE on-call
+    - timestamp: "2026-06-30 23:48"
+      event: Workers killed again within minutes of each restart.
+      action: Paged the orders team.
+      responsibility: SRE on-call
+    - timestamp: "2026-07-01 00:12"
+      event: Orders team found the batch loading the whole month into memory.
+      action: Disabled the batch flag and restarted the workers.
+      responsibility: Orders team
+    - timestamp: "2026-07-01 00:25"
+      event: Workers stable and the backlog cleared.
+      action: Closed the incident.
+      responsibility: SRE on-call
+  five_whys:
+    - question: Why were order confirmations late?
+      answer: orders-worker pods kept getting killed and the consumer group kept pausing.
+    - question: Why were the pods killed?
+      answer: They went over their 512Mi memory limit.
+    - question: Why did memory grow?
+      answer: The month-end batch loaded every order of the month into memory at once.
+    - question: Why did the batch run inside the worker?
+      answer: It was added to the worker as a quick change and never moved to its own job.
+    - question: Why was this not caught earlier?
+      answer: Month-end volume is much higher than test data, and the batch was never load tested.
+  fishbone:
+    - category: tools
+      issues:
+        - The batch reads the whole month in one query instead of in pages.
+    - category: environment
+      issues:
+        - The batch shares memory limits with the order consumer.
+  root_causes:
+    - The month-end batch loaded all orders of the month into worker memory at once.
+    - The batch ran inside orders-worker, so its memory use killed the order consumer too.
+  action_items:
+    - action: Move the month-end batch to its own scheduled job.
+      owner: Orders team
+      due_date: "2026-07-24"
+    - action: Read orders in pages of 1,000 in the batch.
+      owner: Orders team
+      due_date: "2026-07-24"

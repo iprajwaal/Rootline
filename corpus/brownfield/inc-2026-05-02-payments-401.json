@@ -1,0 +1,41 @@
+{
+  "channel": "inc-2026-05-02-checkout-payments-failing-after-the-paym",
+  "messages": [
+    {
+      "type": "message",
+      "user_name": "payments-team",
+      "ts": "1777680000.000100",
+      "text": "Payment API key expired. None. The expiry reminder went to an old mailbox."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1777680420.000100",
+      "text": "Alert PaymentAuthFailures fired. On-call opened an incident."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1777681860.000100",
+      "text": "On-call found the expired key with shopctl secrets describe. Paged the payments team on-call for the rotate permission."
+    },
+    {
+      "type": "message",
+      "user_name": "payments-team-on-call",
+      "ts": "1777683120.000100",
+      "text": "Key rotated and orders-api restarted. Watched the 401 rate fall to zero."
+    },
+    {
+      "type": "message",
+      "user_name": "sre-on-call",
+      "ts": "1777683480.000100",
+      "text": "Card payments working again. Closed the incident."
+    },
+    {
+      "type": "message",
+      "user_name": "payments-team",
+      "ts": "1777685280.000100",
+      "text": "summary: The key expiry reminder went to an unmonitored mailbox, so the key expired unnoticed. Nothing alerted on keys close to expiry. fix: Rotated the key with shopctl and restarted orders-api."
+    }
+  ]
+}

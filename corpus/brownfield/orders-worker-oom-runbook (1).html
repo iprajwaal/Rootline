@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Orders Engineering : orders-worker OOM runbook</title></head>
+<body>
+<div id="header"><a href="/wiki">ShopLite Wiki</a> | <a href="/wiki/search">Search</a> | <a href="/wiki/login">Log in</a></div>
+<div id="breadcrumbs">Pages / Orders Engineering / Incidents</div>
+<h1 id="title-heading">orders-worker OOM runbook</h1>
+<div class="page-metadata">Created by Jonas Weber, last modified on 2026-07-03</div>
+<div id="main-content" class="wiki-content">
+<h2>Summary</h2>
+<p>The month-end report batch ran inside orders-worker and loaded every order of the month into memory. Workers hit their 512Mi limit and were killed again and again for just over an hour.</p>
+<h2>What happened</h2>
+<p>orders-worker pods were killed with &quot;orders-worker container killed: OOMKilled (exit code 137)&quot; every few minutes. Each restart paused the consumer group and order confirmations backed up.</p>
+<h2>Timeline</h2>
+<table>
+<tr><th>Time (UTC)</th><th>What</th><th>Who</th></tr>
+<tr><td>2026-06-30 23:15</td><td>Month-end batch started inside orders-worker. None.</td><td>Orders team</td></tr>
+<tr><td>2026-06-30 23:20</td><td>Alert OrdersWorkerOOMKilled fired. On-call restarted the workers.</td><td>SRE on-call</td></tr>
+<tr><td>2026-06-30 23:48</td><td>Workers killed again within minutes of each restart. Paged the orders team.</td><td>SRE on-call</td></tr>
+<tr><td>2026-07-01 00:12</td><td>Orders team found the batch loading the whole month into memory. Disabled the batch flag and restarted the workers.</td><td>Orders team</td></tr>
+<tr><td>2026-07-01 00:25</td><td>Workers stable and the backlog cleared. Closed the incident.</td><td>SRE on-call</td></tr>
+</table>
+<h2>Why it happened</h2>
+<ul>
+<li>The month-end batch loaded all orders of the month into worker memory at once.</li>
+<li>The batch ran inside orders-worker, so its memory use killed the order consumer too.</li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li>Move the month-end batch to its own scheduled job. (Orders team)</li>
+<li>Read orders in pages of 1,000 in the batch. (Orders team)</li>
+</ul>
+<p>Stop orders-worker from being killed for memory and get orders flowing again.</p>
+<h2>When to use</h2>
+<p>Use this when the OrdersWorkerOOMKilled alert fires, or worker pods show &quot;orders-worker container killed: OOMKilled (exit code 137)&quot;.</p>
+<h2>Steps</h2>
+<table>
+<tr><th>#</th><th>What to do</th><th>Command</th><th>Expected</th></tr>
+<tr><td>1</td><td>Check worker memory.</td><td><code>kubectl -n shop top pod -l app=orders-worker</code></td><td>One or more workers close to the 512Mi limit.</td></tr>
+<tr><td>2</td><td>Check how often the workers restart.</td><td><code>kubectl -n shop get pods -l app=orders-worker</code></td><td>RESTARTS above 2 in the last hour.</td></tr>
+<tr><td>3</td><td>Restart the workers.</td><td><code>kubectl -n shop rollout restart deploy/orders-worker</code></td><td>Pods restart and memory drops.</td></tr>
+<tr><td>4</td><td>If restarts continue, roll back the worker release.</td><td><code>kubectl -n shop rollout undo deploy/orders-worker</code></td><td>The previous worker version is running.</td></tr>
+</table>
+<h2>Contacts</h2>
+<ul>
+<li>Page the orders team if workers still restart after step 4.</li>
+</ul>
+</div>
+<div id="footer">Exported from the wiki. This page may be out of date.</div>
+</body>
+</html>
