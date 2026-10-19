@@ -3,10 +3,14 @@ name = "rootline"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "beautifulsoup4>=4.12",
     "fastapi>=0.115",
     "langgraph>=0.6",
+    "markdown-it-py>=3.0",
+    "pdfplumber>=0.11",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.5",
+    "python-docx>=1.1",
     "pyyaml>=6.0",
     "uvicorn[standard]>=0.30",
 ]
@@ -17,7 +21,6 @@ dev = [
     "mypy>=1.11",
     "pypdf>=5.0",
     "pytest>=8.3",
-    "python-docx>=1.1",
     "reportlab>=4.2",
     "ruff>=0.6",
     "types-pyyaml>=6.0",
