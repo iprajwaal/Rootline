@@ -1,8 +1,9 @@
 import operator
+from datetime import UTC, datetime
 from typing import Annotated
 
 from langgraph.graph import MessagesState
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from rootline.agent.guard import GuardReport
 from rootline.agent.understand import Understanding
@@ -15,6 +16,8 @@ class Step(BaseModel):
     detail: str
     ms: float
     llm_calls: int = 0
+    # When it ran, so a drafted RCA timeline comes from real times.
+    at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Focus(BaseModel):

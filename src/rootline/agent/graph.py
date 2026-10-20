@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -10,30 +11,44 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import interrupt
 
 from rootline.agent.answer import PASSAGES, RCA_DOCS, AskAnswer, Claim, checked, rca_prompt
+from rootline.agent.drafts import AskDraft, Drafter, draft_prompt, transcript
 from rootline.agent.executor import Executor, SandboxUnavailable, Section
+from rootline.agent.fallback import evidence, fallback_prompt, triage
 from rootline.agent.guard import MAX_BYTES, GuardReport, guard
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, footer
 from rootline.agent.state import AgentState, Focus, Step
 from rootline.agent.understand import Understander, Understanding
+from rootline.catalog import named_services
 from rootline.core.context import request_scope
 from rootline.core.models import SopStep
 from rootline.llm.ledger import elapsed_ms
 from rootline.llm.structured import LLMUnavailable
+from rootline.retrieval.suggest import SuggestResponse
 
 log = logging.getLogger(__name__)
 
 Graph = CompiledStateGraph[AgentState, None, AgentState, AgentState]
-ROUTES = ("find", "suggest", "ask_sop", "ask_rca", "run_step")
+ROUTES = ("find", "suggest", "ask_sop", "ask_rca", "run_step", "draft")
 SHOWN_CHARS = 120
+REFERENCE_PASSAGES = 3
+
+
+@dataclass(frozen=True)
+class Writers:
+    # The three places an LLM writes text: RCA answers, the no-document summary and drafts.
+    rca: AskAnswer
+    fallback: AskAnswer
+    draft: AskDraft
 
 
 def build_graph(
     understander: Understander,
     knowledge: Knowledge,
     presenter: Presenter,
-    ask_answer: AskAnswer,
+    writers: Writers,
     executor: Executor,
+    drafter: Drafter,
     tracing: list[BaseCallbackHandler],
 ) -> Graph:
     def guard_input(state: AgentState) -> dict[str, Any]:
@@ -99,6 +114,8 @@ def build_graph(
             detail=f"{rcas} RCAs · {sops} SOPs",
             ms=elapsed_ms(started),
         )
+        if response.rca.nothing_relevant and response.sop.nothing_relevant:
+            return fallback(state, step, response)
         top_sop = response.sop.suggestions[0] if response.sop.suggestions else None
         top_rca = response.rca.suggestions[0] if response.rca.suggestions else None
         focus = Focus(
@@ -107,6 +124,36 @@ def build_graph(
             rca=top_rca.doc_id if top_rca else None,
         )
         return answer(state, step, presenter.suggestions(response)) | {"focus": focus}
+
+    def fallback(state: AgentState, found: Step, response: SuggestResponse) -> dict[str, Any]:
+        # Nothing internal covers the issue: read-only checks, public pages and one labelled
+        # summary, in that order.
+        started = time.perf_counter()
+        issue = response.issue.query
+        findings = triage(executor)
+        evidence_text = " ".join([issue, *(f.output for f in findings if f.check != "logs")])
+        refs = knowledge.references(evidence_text)
+        pages = knowledge.passages(issue, [r.doc_id for r in refs], "ref", REFERENCE_PASSAGES)
+        sources = [*evidence(findings), *pages]
+        claims: list[Claim] = []
+        llm_calls = 0
+        if sources:
+            try:
+                with request_scope(state["request_id"]):
+                    written = writers.fallback(fallback_prompt(issue, sources))
+                claims, llm_calls = checked(written, sources), 1
+            except LLMUnavailable as error:
+                log.warning("fallback summary skipped error=%s", error)
+        step = Step(
+            request_id=state["request_id"],
+            node="fallback",
+            args={"checks": ", ".join(f.check for f in findings) or "sandbox not reachable"},
+            detail=f"{len(refs)} reference pages · {len(claims)} cited sentences",
+            ms=elapsed_ms(started),
+            llm_calls=llm_calls,
+        )
+        text = presenter.fallback(refs, findings, claims, sources)
+        return answer(state, found, text, step)
 
     def ask_sop(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -141,13 +188,13 @@ def build_graph(
         started = time.perf_counter()
         text, named = question(state), state["understanding"].doc_id
         hits = knowledge.search(named if named and named.startswith("RCA") else text).rca.hits
-        passages = knowledge.rca_passages(text, [h.doc_id for h in hits[:RCA_DOCS]], PASSAGES)
+        passages = knowledge.passages(text, [h.doc_id for h in hits[:RCA_DOCS]], "rca", PASSAGES)
         claims: list[Claim] = []
         returned, llm_calls = 0, 0
         if passages:
             try:
                 with request_scope(state["request_id"]):
-                    found = ask_answer(rca_prompt(text, passages))
+                    found = writers.rca(rca_prompt(text, passages))
                 claims, returned, llm_calls = checked(found, passages), len(found.claims), 1
             except LLMUnavailable as error:
                 log.warning("rca answer degraded error=%s", error)
@@ -211,6 +258,43 @@ def build_graph(
         )
         return answer(state, step, text)
 
+    def draft(state: AgentState) -> dict[str, Any]:
+        started = time.perf_counter()
+        llm_calls = 0
+        failing = still_failing(executor)
+        if failing:
+            text = (
+                f"The system still reports a failure ({', '.join(failing)}). Fix it first,"
+                " then ask me to draft the SOP and RCA."
+            )
+            detail = "not healthy yet"
+        else:
+            chat = transcript(state["messages"], state.get("trace", []))
+            catalog = drafter.catalog
+            services = sorted(named_services(chat, catalog.services))
+            alerts = [alert for alert, service in catalog.alerts.items() if service in services]
+            try:
+                with request_scope(state["request_id"]):
+                    written = writers.draft(draft_prompt(chat, services, alerts))
+                drafted = drafter.save(written, chat, services, presenter.today())
+                text, llm_calls = presenter.drafted(drafted), 1
+                detail = f"{drafted.sop_id} and {drafted.rca_id} queued for review"
+            except LLMUnavailable as error:
+                log.warning("draft skipped error=%s", error)
+                text = (
+                    "The drafting model is not available, so nothing was drafted. Try again later."
+                )
+                detail = "llm down"
+        step = Step(
+            request_id=state["request_id"],
+            node="draft",
+            args={},
+            detail=detail,
+            ms=elapsed_ms(started),
+            llm_calls=llm_calls,
+        )
+        return answer(state, step, text)
+
     def execute(doc_id: str, version: int, section: Section, sop_step: SopStep) -> tuple[str, str]:
         try:
             result = executor.run(doc_id, version, section, sop_step.ordinal)
@@ -229,6 +313,7 @@ def build_graph(
     builder.add_node("ask_sop", ask_sop)
     builder.add_node("ask_rca", ask_rca)
     builder.add_node("run_step", run_step)
+    builder.add_node("draft", draft)
     builder.add_node("reply", reply)
     builder.add_edge(START, "guard")
     builder.add_edge("guard", "understand")
@@ -289,10 +374,21 @@ def approved(resume: Any) -> tuple[bool, str]:
     return first.get("type") == "approve", str(first.get("message") or "")
 
 
-def answer(state: AgentState, step: Step, text: str) -> dict[str, Any]:
+def still_failing(executor: Executor) -> list[str]:
+    # A sandbox that cannot be reached is not proof of a failure, so drafting goes ahead.
+    try:
+        health = executor.sandbox.health()
+    except SandboxUnavailable:
+        return []
+    return sorted(part for part, state in health["components"].items() if state != "ok")
+
+
+def answer(state: AgentState, step: Step, text: str, *later: Step) -> dict[str, Any]:
+    steps = [step, *later]
     turn = [s for s in state.get("trace", []) if s.request_id == step.request_id]
-    content = "\n\n".join([text, *notices(state["guard"])]) + footer([*turn, step])
-    return {"messages": [*step_messages(step), AIMessage(content=content)], "trace": [step]}
+    content = "\n\n".join([text, *notices(state["guard"])]) + footer([*turn, *steps])
+    messages = [message for s in steps for message in step_messages(s)]
+    return {"messages": [*messages, AIMessage(content=content)], "trace": steps}
 
 
 def notices(report: GuardReport) -> list[str]:

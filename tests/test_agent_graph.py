@@ -10,8 +10,10 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from rootline.agent.answer import AskAnswer, LlmAnswer, answer_asker
+from rootline.agent.drafts import AskDraft, Drafter, draft_asker
 from rootline.agent.executor import Executor
-from rootline.agent.graph import Graph, build_graph
+from rootline.agent.fallback import fallback_asker
+from rootline.agent.graph import Graph, Writers, build_graph
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, escape
 from rootline.agent.state import AgentState
@@ -39,6 +41,8 @@ def make_graph(
     settings: Settings,
     ask_answer: AskAnswer | None = None,
     shop: FakeShop | None = None,
+    ask_fallback: AskAnswer | None = None,
+    ask_draft: AskDraft | None = None,
 ) -> Graph:
     llm = build_llm(settings, lambda call: None)
     catalog = analyzer.catalog
@@ -52,8 +56,13 @@ def make_graph(
         Understander(catalog, intent_asker(llm)),
         Knowledge(search_db_url, analyzer.embedder, catalog),
         Presenter("http://rootline.test", 365, today=lambda: date(2026, 10, 20)),
-        ask_answer or answer_asker(llm),
+        Writers(
+            ask_answer or answer_asker(llm),
+            ask_fallback or fallback_asker(llm),
+            ask_draft or draft_asker(llm),
+        ),
         executor,
+        Drafter(search_db_url, catalog),
         [],
     )
 

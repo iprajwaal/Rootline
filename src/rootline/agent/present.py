@@ -4,16 +4,19 @@ from dataclasses import dataclass
 from datetime import date
 
 from rootline.agent.answer import Claim
+from rootline.agent.drafts import Drafted
 from rootline.agent.executor import Section, StepResult
+from rootline.agent.fallback import Finding
 from rootline.agent.state import Step
 from rootline.agent.understand import Lane
 from rootline.core.models import SopStep
 from rootline.retrieval.documents import Document
 from rootline.retrieval.passages import Passage
+from rootline.retrieval.references import Reference
 from rootline.retrieval.search import LANES, Hit, LaneResult, SearchResponse
 from rootline.retrieval.suggest import NONE_FOUND, SuggestionLane, SuggestResponse
 
-BADGE = {"rca": "[RCA]", "sop": "[SOP]", "ref": "[REFERENCE]"}
+BADGE = {"rca": "[RCA]", "sop": "[SOP]", "ref": "[REFERENCE · external]"}
 LIST_NAME = {"rca": "Past incidents", "sop": "Procedures"}
 # Escaped so stored text shows exactly as written: DB_POOL_MAX must not turn into italics.
 MARKDOWN = re.compile(r"([\\`*_\[\]<>#|~])")
@@ -148,6 +151,63 @@ class Presenter:
         ]
         if step.expect:
             parts.append(f"Expect: {escape(step.expect)}")
+        return "\n\n".join(parts)
+
+    def fallback(
+        self,
+        references: list[Reference],
+        findings: list[Finding],
+        claims: list[Claim],
+        sources: list[Passage],
+    ) -> str:
+        parts = ["No internal SOP or RCA covers this."]
+        if references:
+            pages = [
+                f"- [{escape(ref.doc_id)}]({self.link(ref.doc_id)}) {escape(ref.title)}"
+                f" · {escape(ref.publisher)} · {escape(ref.licence)} · [source]({ref.source_url})"
+                for ref in references
+            ]
+            parts.append(
+                f"**{escape(BADGE['ref'])}** Public documentation, not company procedure.\n"
+                + "\n".join(pages)
+            )
+        if findings:
+            lines = [
+                f"- {escape(f.check)}: {escape(f.output)}" for f in findings if f.check != "logs"
+            ]
+            logs = [f.output for f in findings if f.check == "logs"]
+            parts.append("**Read-only checks**\n" + "\n".join(lines))
+            parts += [f"Recent logs\n\n{block(logs[0])}"] if logs else []
+        if claims:
+            sentences = [f"{escape(c.text)} {self.cite_any(c.sources, sources)}" for c in claims]
+            parts.append(
+                "**\\[AI SUGGESTION · unverified\\]** Built from the checks and pages above, not"
+                " from an internal document. Nothing here was run.\n\n" + " ".join(sentences)
+            )
+        parts.append(
+            'Once it is fixed, tell me what you did and say "draft the SOP and RCA". I will'
+            " write both up for review."
+        )
+        return "\n\n".join(parts)
+
+    def cite_any(self, numbers: list[int], sources: list[Passage]) -> str:
+        # Checks have no page of their own, so only document sources get a link.
+        cites = []
+        for n in numbers:
+            doc_id = sources[n - 1].doc_id
+            cites.append(f"\\[{n}\\]" if doc_id == "CHECK" else f"[\\[{n}\\]]({self.link(doc_id)})")
+        return "".join(cites)
+
+    def drafted(self, drafted: Drafted) -> str:
+        parts = [
+            "Drafted for review. Nothing is searchable until a person approves it.",
+            f"- {escape(BADGE['sop'])} {drafted.sop_id} {escape(drafted.sop_title)}\n"
+            f"- {escape(BADGE['rca'])} {drafted.rca_id} {escape(drafted.rca_title)}",
+            f"Review and approve them at {self.base_url}/review",
+        ]
+        if drafted.dropped:
+            commands = ", ".join(code(command) for command in drafted.dropped)
+            parts.append(f"Left out commands nobody typed in this chat: {commands}")
         return "\n\n".join(parts)
 
     def choose(self, hits: list[Hit]) -> str:

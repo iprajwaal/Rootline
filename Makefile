@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check corpus up demo chaos down
+.PHONY: install lint typecheck test check corpus up demo chaos act down
 
 install:
 	uv sync
@@ -32,6 +32,11 @@ demo:
 FAULT ?= db_pool_exhausted
 chaos:
 	curl -s -X POST localhost:8080/chaos/$(FAULT)
+
+# Fixes ShopLite by hand, the way an engineer would without an SOP: make act ACTION=clear_tmp
+ACTION ?= clear_tmp
+act:
+	curl -s -X POST localhost:8080/admin/actions/$(ACTION)
 
 down:
 	docker compose --profile demo down

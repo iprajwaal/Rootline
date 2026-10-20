@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user is asking for commands to solve a current problem right now, which falls under asking for help with a live issue."
+}

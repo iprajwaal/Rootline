@@ -7,6 +7,7 @@ from rootline.catalog import Catalog
 from rootline.ingest.embedding import Embedder
 from rootline.retrieval.documents import Document, read_document
 from rootline.retrieval.passages import Passage, top_passages
+from rootline.retrieval.references import Reference, references
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
 
@@ -29,9 +30,15 @@ class Knowledge:
         with psycopg.connect(self.database_url) as conn:
             return read_document(conn, doc_id)
 
-    def rca_passages(self, question: str, doc_ids: list[str], limit: int) -> list[Passage]:
+    def passages(
+        self, question: str, doc_ids: list[str], doc_type: str, limit: int
+    ) -> list[Passage]:
         with psycopg.connect(self.database_url) as conn:
-            return top_passages(conn, self.embedder, question, doc_ids, "rca", limit)
+            return top_passages(conn, self.embedder, question, doc_ids, doc_type, limit)
+
+    def references(self, text: str) -> list[Reference]:
+        with psycopg.connect(self.database_url) as conn:
+            return references(conn, text)
 
     def searcher(self, conn: psycopg.Connection[Any]) -> Searcher:
         return Searcher(conn, self.embedder, self.catalog.services)

@@ -8,8 +8,10 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+from rootline.api.review_page import review_page
 from rootline.config import Settings
 from rootline.core.context import REQUEST_ID
 from rootline.core.logs import configure_logging
@@ -29,6 +31,7 @@ from rootline.ingest.parsing import UnsupportedFormat
 from rootline.retrieval.documents import Document, read_document
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
+from rootline.review import approve, drafts, other_reviews, reject
 
 
 @asynccontextmanager
@@ -168,6 +171,29 @@ def open_incident_chat(incident_id: int, settings: SettingsDep) -> dict[str, str
     if thread_id is None:
         raise HTTPException(status_code=404, detail=f"no incident {incident_id}")
     return {"thread_id": thread_id}
+
+
+@app.get("/review", response_class=HTMLResponse)
+def review(settings: SettingsDep) -> HTMLResponse:
+    with psycopg.connect(settings.database_url) as conn:
+        return HTMLResponse(review_page(drafts(conn), other_reviews(conn)))
+
+
+@app.post("/review/{review_id}/approve")
+def approve_draft(review_id: int, settings: SettingsDep, analyzer: AnalyzerDep) -> RedirectResponse:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        outcome = approve(conn, build_store(conn, settings, analyzer, "reviewer"), review_id)
+    if outcome is None:
+        raise HTTPException(status_code=404, detail=f"no open draft {review_id}")
+    return RedirectResponse("/review", status_code=303)
+
+
+@app.post("/review/{review_id}/reject")
+def reject_draft(review_id: int, settings: SettingsDep) -> RedirectResponse:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        if not reject(conn, review_id):
+            raise HTTPException(status_code=404, detail=f"no open draft {review_id}")
+    return RedirectResponse("/review", status_code=303)
 
 
 def suggester(conn: psycopg.Connection[Any], analyzer: Analyzer) -> Suggester:

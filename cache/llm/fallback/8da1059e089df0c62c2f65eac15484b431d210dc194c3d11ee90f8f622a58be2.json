@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "The health check shows that the disk is degraded and failing.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The disk usage check shows that /var/lib/shoplite is 100% used.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The logs show repeated orders-api errors with OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The public documentation page REF-K8S-002 under Requests and limits describes setting ephemeral-storage requests and limits.",
+      "sources": [
+        5
+      ]
+    }
+  ]
+}
