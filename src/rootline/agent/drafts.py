@@ -26,6 +26,7 @@ from rootline.corpus.md_writer import to_markdown
 from rootline.ingest.redaction import redact
 from rootline.llm.structured import StructuredLLM
 from rootline.retrieval.documents import Document, as_text
+from rootline.retrieval.search import DOC_ID
 
 # Bump when the prompt wording changes. The ledger and traces group calls by it.
 DRAFT_PROMPT_VERSION = "draft-v2"
@@ -164,6 +165,11 @@ def draft_prompt(
     )
 
 
+def titled(text: str) -> str:
+    # The model sometimes puts a related document's ID in a title; the ID is the new one's.
+    return DOC_ID.sub("", text).strip(" -·:") or text
+
+
 def lasted(started: datetime | None) -> str:
     # From the first message in the chat to the write-up, which runs once it is healthy.
     if started is None:
@@ -255,7 +261,7 @@ class Drafter:
             sop_meta = DocMeta(
                 doc_id=sop_id,
                 doc_type="sop",
-                title=followed.title if followed else draft.sop_title,
+                title=followed.title if followed else titled(draft.sop_title),
                 services=context.services,
                 owner="on-call",
                 revision=revision,
@@ -266,7 +272,7 @@ class Drafter:
                 update={
                     "doc_id": rca_id,
                     "doc_type": "rca",
-                    "title": draft.rca_title,
+                    "title": titled(draft.rca_title),
                     "revision": 1,
                     "related": [sop_id, *past],
                 }
@@ -283,7 +289,7 @@ class Drafter:
             sop_id=sop_id,
             rca_id=rca_id,
             sop_title=sop_meta.title,
-            rca_title=draft.rca_title,
+            rca_title=titled(draft.rca_title),
             sop_version=revision,
             replaced=bool(waiting),
             based_on=f"{followed.doc_id} v{followed.version}" if followed else None,

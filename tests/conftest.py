@@ -56,8 +56,16 @@ def migrated_db(empty_db: psycopg.Connection) -> psycopg.Connection:
 
 @pytest.fixture(scope="session")
 def offline_settings() -> Settings:
-    # No API key: LLM answers come only from the committed cache, so tests never call out.
-    return Settings(database_url=isolated_url(), google_api_key="")
+    # No API key: LLM answers and embeddings come only from the committed caches, so tests
+    # never call out. After a test text changes, one run with ROOTLINE_TEST_EMBED_KEY set
+    # fills the embedding cache; the LLM stays offline either way.
+    fill_key = os.environ.get("ROOTLINE_TEST_EMBED_KEY", "")
+    return Settings(
+        database_url=isolated_url(),
+        google_api_key="",
+        embed_api_key=fill_key,
+        embed_query_attempts=8 if fill_key else 1,
+    )
 
 
 @pytest.fixture(scope="session")

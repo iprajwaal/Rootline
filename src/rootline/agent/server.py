@@ -1,3 +1,5 @@
+import threading
+
 import httpx
 
 from rootline.agent.answer import answer_asker
@@ -11,7 +13,7 @@ from rootline.agent.understand import Understander, intent_asker
 from rootline.catalog import load_catalog
 from rootline.config import Settings
 from rootline.core.logs import configure_logging
-from rootline.ingest.embedding import Embedder
+from rootline.ingest.factory import build_embedder
 from rootline.llm.ledger import PostgresLedger
 from rootline.llm.structured import build_llm
 from rootline.llm.tracing import tracing_callbacks
@@ -19,8 +21,10 @@ from rootline.llm.tracing import tracing_callbacks
 
 def default_graph(settings: Settings) -> Graph:
     catalog = load_catalog(settings.catalog_path)
-    llm = build_llm(settings, PostgresLedger(settings.database_url).record)
-    embedder = Embedder(settings.embed_model, settings.model_cache_dir)
+    ledger = PostgresLedger(settings.database_url).record
+    llm = build_llm(settings, ledger)
+    embedder = build_embedder(settings, ledger)
+    threading.Thread(target=embedder.warm, daemon=True).start()
     return build_graph(
         Understander(catalog, intent_asker(llm)),
         Knowledge(settings.database_url, embedder, catalog),

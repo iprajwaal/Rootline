@@ -76,7 +76,7 @@ def get_settings() -> Settings:
 
 @cache
 def get_analyzer() -> Analyzer:
-    # Loaded on first use, so the health check does not wait for the embedding model.
+    # Built on first use, so the health check does not wait for the classifier to train.
     return build_analyzer(get_settings())
 
 

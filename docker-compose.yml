@@ -6,12 +6,11 @@ x-app: &app
       required: false
   environment:
     DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
-  # The catalog, the committed LLM cache and the embedding model come from the repo, so the
-  # agent and the API read the same files as the tests. Raw uploads are kept by hash.
+  # The catalog and the committed LLM and embedding caches come from the repo, so the agent
+  # and the API read the same files as the tests. Raw uploads are kept by hash.
   volumes:
     - ./corpus:/app/corpus:ro
     - ./cache:/app/cache
-    - ./data/models:/app/data/models
     - raw:/app/data/raw
 
 services:

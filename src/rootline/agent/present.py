@@ -23,6 +23,9 @@ LIST_NAME = {"rca": "Past incidents", "sop": "Procedures"}
 MARKDOWN = re.compile(r"([\\`*_\[\]<>#|~])")
 BACKTICKS = re.compile(r"`+")
 TIE = "The first two fit about equally well. Say which one you mean."
+KEYWORDS_ONLY = (
+    "Search by meaning is not available right now, so these results match keywords only."
+)
 EXCERPTS = 2
 FOLLOW_UP = (
     "Run the steps in order and tell me what you see. Ask about any step, or say"
@@ -39,13 +42,15 @@ class Presenter:
 
     def found(self, response: SearchResponse, lane: Lane | None) -> str:
         parts = [escape(response.message)] if response.message else []
+        if response.mode == "lexical":
+            parts.append(KEYWORDS_ONLY)
         for name in LANES if lane in (None, "both") else (lane,):
             result: LaneResult = getattr(response, name)
             if result.hits:
                 parts.append(f"**{LIST_NAME[name]} {escape(BADGE[name])}**")
                 parts += [self.card(hit, " · ".join(hit.evidence)) for hit in result.hits]
                 parts += [TIE] if result.ambiguous else []
-            elif response.mode == "hybrid":
+            elif response.mode in ("hybrid", "lexical"):
                 parts.append(f"Nothing relevant in the {name.upper()}s.")
         if response.did_you_mean:
             parts.append("**Also close**")

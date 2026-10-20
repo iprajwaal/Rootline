@@ -18,13 +18,28 @@ from rootline.llm.structured import StructuredLLM, build_llm
 
 
 def build_analyzer(settings: Settings, record: RecordCall | None = None) -> Analyzer:
-    llm = build_llm(settings, record or PostgresLedger(settings.database_url).record)
+    ledger = record or PostgresLedger(settings.database_url).record
+    llm = build_llm(settings, ledger)
     return Analyzer(
         catalog=load_catalog(settings.catalog_path),
-        embedder=Embedder(settings.embed_model, settings.model_cache_dir),
+        embedder=build_embedder(settings, ledger),
         ask_label=label_asker(llm),
         ask_record=record_asker(llm),
         first=train(labelled_examples(settings.corpus_dir)),
+    )
+
+
+def build_embedder(settings: Settings, record: RecordCall) -> Embedder:
+    return Embedder(
+        model_name=settings.embed_model,
+        dims=settings.embed_dims,
+        api_key=settings.embed_api_key or settings.google_api_key,
+        vertexai=settings.llm_vertexai,
+        cache_dir=settings.embed_cache_dir,
+        timeout_s=settings.embed_timeout_s,
+        record=record,
+        usd_per_mchar=settings.embed_usd_per_mchar,
+        query_attempts=settings.embed_query_attempts,
     )
 
 

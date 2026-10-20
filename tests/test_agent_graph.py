@@ -22,7 +22,7 @@ from rootline.ingest.analysis import Analyzer
 from rootline.llm.structured import LLMUnavailable, build_llm
 
 RCA_QUESTIONS = [
-    "why did the orders db pool run out during the flash sale?",
+    "why did the orders db pool run out of connections?",
     "what happened with the cache outage last month?",
     "what was the customer impact of the payment key expiry?",
     "has the worker been OOMKilled before? what caused it?",
@@ -192,10 +192,13 @@ def test_rca_answer_cites_the_incident_it_is_about(graph: Graph) -> None:
 
 
 def test_rca_question_the_library_cannot_answer_links_the_closest_rcas(graph: Graph) -> None:
-    text = reply(ask(graph, "why did the HR portal SSO fail last week?"))
+    # The pool ran out because of a sales report; the flash sale was a different incident.
+    text = reply(ask(graph, "why did the orders db pool run out during the flash sale?"))
+    unrelated = reply(ask(graph, "why did the HR portal SSO fail last week?"))
 
     assert text.startswith("The closest RCAs do not answer this question.")
-    assert CITE.findall(text) == []
+    assert "RCA-2025-014" in text and CITE.findall(text) == []
+    assert unrelated.startswith("No RCA in the library covers this.")
 
 
 def test_rca_question_without_the_llm_shows_sections_word_for_word(

@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     catalog_path: Path = Path("corpus/catalog.yaml")
     # Labelled documents the classifier learns from.
     corpus_dir: Path = Path("corpus")
-    embed_model: str = "BAAI/bge-small-en-v1.5"
-    model_cache_dir: Path = Path("data/models")
     google_api_key: str = ""
     # A Vertex AI API key calls the same Gemini models through Vertex instead of the
     # Gemini API. The cache does not care which one answered.
@@ -24,6 +22,19 @@ class Settings(BaseSettings):
     # Paid-tier USD per million tokens for llm_small_model. Output includes thinking tokens.
     llm_input_usd_per_mtok: float = 0.30
     llm_output_usd_per_mtok: float = 2.50
+    # Vertex embeddings, cached on disk like the LLM answers. The vector size must match the
+    # chunks.embedding column.
+    embed_model: str = "text-embedding-005"
+    # Empty means the LLM key is used.
+    embed_api_key: str = ""
+    embed_dims: int = 768
+    embed_cache_dir: Path = Path("cache/embeddings")
+    # Long enough for Vertex's slow first call on a new connection.
+    embed_timeout_s: float = 30.0
+    # Retries back off on rate limits; after the last one a search falls back to keywords.
+    embed_query_attempts: int = 3
+    # USD per million input characters for embed_model.
+    embed_usd_per_mchar: float = 0.025
     # Tracing is off until both keys are set.
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""

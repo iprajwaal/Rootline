@@ -10,8 +10,10 @@ from rootline.retrieval.search import STOPWORDS
 
 # Bump when the prompt wording changes. The ledger and traces group calls by it.
 RCA_PROMPT_VERSION = "answer-rca-v1"
-RCA_DOCS = 3
-PASSAGES = 4
+# Nearly every section of the two closest incidents, so a "why" question always sees the
+# root cause section even when timeline rows rank closer to the question.
+RCA_DOCS = 2
+PASSAGES = 12
 # Share of a sentence's words that must appear in the passages it cites.
 GROUNDED_SHARE = 0.6
 # Words are compared on their first letters, so "exhausted" still matches "exhaustion".
