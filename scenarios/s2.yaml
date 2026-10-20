@@ -1,0 +1,7 @@
+name: Queue lag asked vaguely
+proves: R2.4 and R1.6, near-identical documents are shown side by side, not guessed
+fault: queue_consumer_lag
+entry: chat
+steps:
+  - say: kafka lag??
+    expect: {contains: [SOP-QUEUE-001, SOP-QUEUE-002, RCA-2025-022]}

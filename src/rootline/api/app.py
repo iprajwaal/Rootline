@@ -1,3 +1,4 @@
+import threading
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -41,7 +42,14 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(get_settings().log_level)
+    # Alerts are matched to documents as they arrive. Building the analyzer and opening the
+    # embedding connection now keeps the first alert from waiting on both.
+    threading.Thread(target=warm, daemon=True).start()
     yield
+
+
+def warm() -> None:
+    get_analyzer().embedder.warm()
 
 
 app = FastAPI(title="rootline", lifespan=lifespan)

@@ -1,0 +1,232 @@
+[
+  {
+    "scenario": "s1",
+    "name": "DB connection pool exhausted, from the alert",
+    "proves": "R3 and R4, alert entry, SOP and RCA given directly, nothing run by Rootline",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "(alert)",
+        "reply": "Read as: alert OrdersDbPoolExhausted \u00b7 error psycopg\\_pool.PoolTimeout: couldn't get a connection after 30.00 sec \u00b7 service orders-api\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2025-014** Orders API outage from exhausted database connection pool  \nv1 \u00b7 updated 2025-06-06, over 365 days old, check it still holds \u00b7 orders-api, orders-db \u00b7 3 similar copies merged \u00b7 [open](http://localhost:8000/docs/RCA-2025-014)  \nPast incident with the same alert OrdersDbPoolExhausted, error PoolTimeout and service orders-api.\n\n**Procedures \\[SOP\\]**\n\n**\\[SOP\\] SOP-DB-001** Recover orders-api from database conn",
+        "llm_calls": 0,
+        "ms": 39,
+        "wall_ms": 357,
+        "ok": true
+      },
+      {
+        "said": "can you give me commands to solve this now?",
+        "reply": "**\\[SOP\\] SOP-DB-001 \u00b7 v1** Recover orders-api from database connection pool exhaustion  \nupdated 2026-07-14 \u00b7 orders-api, orders-db \u00b7 4 similar copies merged \u00b7 [open the full SOP](http://localhost:8000/docs/SOP-DB-001)\n\n**Steps**\n- [ ] **1.** Confirm the API is failing on pool timeouts.  \n  Run: `kubectl -n shop logs deploy/orders-api --since=15m`  \n  Expect: Repeated PoolTimeout lines in the last 15 minutes.\n- [ ] **2.** Count open database connections.  \n  Run: `psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\"`  \n  Expect: The count is at or near 20 times the number of o",
+        "llm_calls": 0,
+        "ms": 14,
+        "wall_ms": 170,
+        "ok": true
+      },
+      {
+        "said": "run step 4",
+        "reply": "**Step 4 of SOP-DB-001 v1** Raise the pool limit.\n\nFrom [\\[SOP\\] SOP-DB-001 v1](http://localhost:8000/docs/SOP-DB-001)\n\nRun: `kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50`\n\nI did not run it: I only try changes on a copy of the system. On the copy, health would be ok after it. Run it yourself when you are ready.\n\nYou should see: The rollout completes and new pods start with DB\\_POOL\\_MAX=50.",
+        "llm_calls": 0,
+        "ms": 18,
+        "wall_ms": 213,
+        "ok": true
+      },
+      {
+        "engineer_ran": "raise_pool_limit"
+      },
+      {
+        "said": "done",
+        "reply": "Health is ok now, so I wrote up the incident from this chat. Nothing is searchable until a person approves it.\n\n- \\[SOP\\] SOP-DB-001 (update to v2) Recover orders-api from database connection pool exhaustion\n- \\[RCA\\] RCA-2026-013 (new) Orders API outage from exhausted database connection pool\n\nThe write-up is built on [\\[SOP\\] SOP-DB-001 v1](http://localhost:8000/docs/SOP-DB-001), related to [\\[RCA\\] RCA-2025-014](http://localhost:8000/docs/RCA-2025-014).\n\nReview and approve them at http://localhost:8000/review",
+        "llm_calls": 1,
+        "ms": 3206,
+        "wall_ms": 3490,
+        "ok": true
+      },
+      {
+        "reviewer": "reject",
+        "drafts": [
+          16,
+          17
+        ]
+      }
+    ],
+    "seconds": 8.4
+  },
+  {
+    "scenario": "s1b",
+    "name": "Scenario 1 replayed with no LLM key and empty caches",
+    "proves": "R7.3, still triages and finds the SOP with no model",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "[FIRING:1] OrdersDbPoolExhausted orders-api critical",
+        "reply": "Read as: alert OrdersDbPoolExhausted \u00b7 service orders-api\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2025-014** Orders API outage from exhausted database connection pool  \nv1 \u00b7 updated 2025-06-06, over 365 days old, check it still holds \u00b7 orders-api, orders-db \u00b7 3 similar copies merged \u00b7 [open](http://localhost:8000/docs/RCA-2025-014)  \nPast incident with the same alert OrdersDbPoolExhausted and service orders-api.\n\n**Procedures \\[SOP\\]**\n\n**\\[SOP\\] SOP-DB-001** Recover orders-api from database connection pool exhaustion  \nv1 \u00b7 updated 2026-07-14 \u00b7 orders-api, orders-db \u00b7 4 similar copies merg",
+        "llm_calls": 0,
+        "ms": 38,
+        "wall_ms": 116,
+        "ok": true
+      },
+      {
+        "said": "steps for db pool",
+        "reply": "**\\[SOP\\] SOP-DB-001 \u00b7 v1** Recover orders-api from database connection pool exhaustion  \nupdated 2026-07-14 \u00b7 orders-api, orders-db \u00b7 4 similar copies merged \u00b7 [open the full SOP](http://localhost:8000/docs/SOP-DB-001)\n\n**Steps**\n- [ ] **1.** Confirm the API is failing on pool timeouts.  \n  Run: `kubectl -n shop logs deploy/orders-api --since=15m`  \n  Expect: Repeated PoolTimeout lines in the last 15 minutes.\n- [ ] **2.** Count open database connections.  \n  Run: `psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\"`  \n  Expect: The count is at or near 20 times the number of o",
+        "llm_calls": 0,
+        "ms": 40,
+        "wall_ms": 138,
+        "ok": true
+      }
+    ],
+    "seconds": 1.3
+  },
+  {
+    "scenario": "s2",
+    "name": "Queue lag asked vaguely",
+    "proves": "R2.4 and R1.6, near-identical documents are shown side by side, not guessed",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "kafka lag??",
+        "reply": "**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2025-022** Orders queue consumer lag after flash sale  \nv1 \u00b7 updated 2025-08-19, over 365 days old, check it still holds \u00b7 orders-worker, order-queue \u00b7 2 similar copies merged \u00b7 [open](http://localhost:8000/docs/RCA-2025-022)  \nmatched: lag \u00b7 service: order-queue \u00b7 section: Timeline (UTC) \u00b7 similarity 0.62\n\n**\\[RCA\\] RCA-2026-003** Orders queue consumer lag from slow payment calls  \nv1 \u00b7 updated 2026-01-23 \u00b7 orders-worker, order-queue, payment-gateway \u00b7 1 similar copy merged \u00b7 [open](http://localhost:8000/docs/RCA-2026-003)  \nmatched: lag \u00b7 service: or",
+        "llm_calls": 1,
+        "ms": 24,
+        "wall_ms": 120,
+        "ok": true
+      }
+    ],
+    "seconds": 0.1
+  },
+  {
+    "scenario": "s3",
+    "name": "Disk full with no document, fixed and written up",
+    "proves": "R3.4 and the learning loop, the agent investigates and tests on a copy, then drafts",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'",
+        "reply": "**\\[AI \u00b7 checked against what I looked at\\]** OSError: \\[Errno 28\\] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf' occurs. \\[4\\] /var/lib/shoplite is 100% used. \\[1\\]\n\n**Steps to follow**\n1. Check the disk usage to confirm the problem.  \n   Run: `kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite`  \n   You should see: /var/lib/shoplite 100% used\n2. Clear temporary files to free up disk space.  \n   Run: `kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete`  \n   You should see: Temporary files older than one day are deleted.  \n",
+        "llm_calls": 5,
+        "ms": 5530,
+        "wall_ms": 6054,
+        "ok": true
+      },
+      {
+        "said": "what does step 2 do and is it safe?",
+        "reply": "**\\[AI \u00b7 checked against what I looked at\\]** Step 2 clears temporary files to free up disk space. \\[2\\] It is safe because a dry run on a copy of the system shows it fixes disk\\_full and health is ok after it. \\[2\\]\n\nThe steps I gave earlier still stand.\n\nStill failing: disk.\n\n**What I looked at** (nothing was changed)\n1. your message\n2. the steps so far",
+        "llm_calls": 2,
+        "ms": 2120,
+        "wall_ms": 2475,
+        "ok": true
+      },
+      {
+        "engineer_ran": "clear_tmp"
+      },
+      {
+        "said": "done",
+        "reply": "Health is ok now, so I wrote up the incident from this chat. Nothing is searchable until a person approves it.\n\n- \\[SOP\\] SOP-DISK-001 (new) Clearing Temporary Files to Resolve Disk Full on orders-api\n- \\[RCA\\] RCA-2026-014 (new) RCA: orders-api Disk Space Exhaustion\n\nReview and approve them at http://localhost:8000/review",
+        "llm_calls": 1,
+        "ms": 2996,
+        "wall_ms": 3316,
+        "ok": true
+      },
+      {
+        "reviewer": "approve",
+        "drafts": [
+          18,
+          19
+        ]
+      }
+    ],
+    "seconds": 26.9
+  },
+  {
+    "scenario": "s4",
+    "name": "Disk full again, the learned SOP is found directly",
+    "proves": "the learning loop, the SOP from scenario 3 is found in under a second with no LLM",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "(alert)",
+        "reply": "Read as: alert OrdersApiDiskFull \u00b7 error OSError: \\[Errno 28\\] No space left on device: '/var/lib/shoplite/tmp/receipt- .pdf' \u00b7 service orders-api\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2026-014** RCA: orders-api Disk Space Exhaustion  \nv1 \u00b7 updated 2026-10-20 \u00b7 orders-api \u00b7 [open](http://localhost:8000/docs/RCA-2026-014)  \nPast incident with the same error OSError, No space left on device and service orders-api.\n\n**Procedures \\[SOP\\]**\n\n**\\[SOP\\] SOP-DISK-001** Clearing Temporary Files to Resolve Disk Full on orders-api  \nv1 \u00b7 updated 2026-10-20 \u00b7 orders-api \u00b7 [open](http://localhost:8000",
+        "llm_calls": 0,
+        "ms": 29,
+        "wall_ms": 224,
+        "ok": true
+      }
+    ],
+    "seconds": 3.3
+  },
+  {
+    "scenario": "s5",
+    "name": "Expired payment API key",
+    "proves": "brownfield SOP from a messy wiki export, and no key value ever shown",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "getting 401 Unauthorized from the payment provider since this morning",
+        "reply": "Read as: error 401 Unauthorized \u00b7 service payment-gateway\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-B-A2A43E** checkout payments failing after the payment api key expired  \nv1 \u00b7 updated 2026-05-03 \u00b7 orders-api, payment-gateway \u00b7 1 similar copy merged \u00b7 [open](http://localhost:8000/docs/RCA-B-A2A43E)  \nPast incident with the same error 401 Unauthorized and service payment-gateway.\n\n**Procedures \\[SOP\\]**\n\n**\\[SOP\\] SOP-B-A7F0F4** Rotate an expired payment-gateway API key  \nv1 \u00b7 updated 2025-09-12, over 365 days old, check it still holds \u00b7 orders-api, payment-gateway \u00b7 [open](http://localhost:8",
+        "llm_calls": 0,
+        "ms": 27,
+        "wall_ms": 144,
+        "ok": true
+      }
+    ],
+    "seconds": 4.3
+  },
+  {
+    "scenario": "s6",
+    "name": "Redis down, seen as latency on orders-api",
+    "proves": "the symptom is not the cause, the latency alert leads to the Redis RCA and SOP",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "(alert)",
+        "reply": "Read as: alert OrdersApiHighLatency \u00b7 error redis.exceptions.ConnectionError: Error 111 connecting to cache: . Connection refused \u00b7 service cache\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2025-031** Slow checkout while the cache was down  \nv1 \u00b7 updated 2025-10-24 \u00b7 cache, orders-api \u00b7 1 similar copy merged \u00b7 [open](http://localhost:8000/docs/RCA-2025-031)  \nPast incident with the same alert OrdersApiHighLatency, error ConnectionError, Connection refused and service cache.\n\n**Procedures \\[SOP\\]**\n\n**\\[SOP\\] SOP-CACHE-001** Recover orders-api when the cache is down  \nv1 \u00b7 updated 2026-02-03 \u00b7 c",
+        "llm_calls": 0,
+        "ms": 39,
+        "wall_ms": 205,
+        "ok": true
+      }
+    ],
+    "seconds": 4.8
+  },
+  {
+    "scenario": "s7",
+    "name": "Bad config deploy, crash looping",
+    "proves": "versions and freshness, the current SOP comes first and the old one is marked superseded",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "orders-api keeps crash looping after the deploy",
+        "reply": "Read as: service orders-api\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-2026-007** Orders API crash loop after deploy with missing config  \nv1 \u00b7 updated 2026-03-16 \u00b7 orders-api \u00b7 2 similar copies merged \u00b7 [open](http://localhost:8000/docs/RCA-2026-007)  \nPast incident with the same service orders-api.\n\n**\\[RCA\\] RCA-B-6FDB4B** how we handled the bad deploy  \nv1 \u00b7 no date on record \u00b7 orders-api \u00b7 not reviewed yet \u00b7 not verified against its source \u00b7 [open](http://localhost:8000/docs/RCA-B-6FDB4B)  \nPast incident with the same service orders-api. Not reviewed yet.\n\n**\\[RCA\\] RCA-2026-014** RCA: or",
+        "llm_calls": 0,
+        "ms": 508,
+        "wall_ms": 698,
+        "ok": true
+      }
+    ],
+    "seconds": 5.8
+  },
+  {
+    "scenario": "s8",
+    "name": "Worker out of memory, pasted log",
+    "proves": "R1.4 and noisy input, a split RCA plus SOP document is found from a raw log",
+    "passed": true,
+    "failures": [],
+    "turns": [
+      {
+        "said": "2026-10-20T03:14:06.002Z INFO [orders-worker-7d9f8b6c5-x2klm] batch month-end started\n2026-10-20T03:14:07.123Z ERROR [orders-worker] container killed: OOMKilled (exit code 137)\n2026-10-20T03:14:09.001Z WARN  [orders-worker] restarting, attempt 4\n",
+        "reply": "Read as: error OOMKilled (exit code 137) \u00b7 service orders-worker\n\n**Past incidents \\[RCA\\]**\n\n**\\[RCA\\] RCA-B-8BF782** orders-worker killed for memory during the month-end batch  \nv1 \u00b7 updated 2026-07-01 \u00b7 orders-api, orders-worker \u00b7 1 similar copy merged \u00b7 [open](http://localhost:8000/docs/RCA-B-8BF782)  \nPast incident with the same error OOMKilled and service orders-worker.\n\n**\\[RCA\\] RCA-2026-011** Consumer lag on the orders queue after worker restarts  \nv1 \u00b7 updated 2026-04-10 \u00b7 orders-worker, order-queue \u00b7 1 similar copy merged \u00b7 [open](http://localhost:8000/docs/RCA-2026-011)  \nPast inci",
+        "llm_calls": 0,
+        "ms": 29,
+        "wall_ms": 155,
+        "ok": true
+      }
+    ],
+    "seconds": 0.2
+  }
+]

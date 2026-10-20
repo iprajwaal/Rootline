@@ -1,0 +1,10 @@
+name: Worker out of memory, pasted log
+proves: R1.4 and noisy input, a split RCA plus SOP document is found from a raw log
+fault: worker_oom
+entry: chat
+steps:
+  - say: |
+      2026-10-20T03:14:06.002Z INFO [orders-worker-7d9f8b6c5-x2klm] batch month-end started
+      2026-10-20T03:14:07.123Z ERROR [orders-worker] container killed: OOMKilled (exit code 137)
+      2026-10-20T03:14:09.001Z WARN  [orders-worker] restarting, attempt 4
+    expect: {contains: [RCA-B-8BF782, SOP-B-CBA1A4]}

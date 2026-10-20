@@ -14,7 +14,9 @@ from shoplite.shop import Shop
 
 @dataclass
 class Watchdog:
-    # Posts an Alertmanager webhook when a fault starts or stops, like a real alert rule.
+    # Posts an Alertmanager webhook when a fault starts or stops, like a real alert rule. The
+    # first tick after a start announces every fault's state, so an alert left open by a
+    # restart is resolved instead of staying open forever.
     shop: Shop
     webhook: str
     client: httpx.AsyncClient
@@ -26,14 +28,16 @@ class Watchdog:
             if firing:
                 self.shop.log("error", fault.service, fault.error)
             status = "firing" if firing else "resolved"
-            if self.sent.get(fault.name, "resolved") == status:
+            if self.sent.get(fault.name) == status:
                 continue
             try:
                 response = await self.client.post(self.webhook, json=self.shop.alert(fault, status))
                 response.raise_for_status()
                 self.sent[fault.name] = status
             except httpx.HTTPError as error:
-                # Tried again on the next tick.
+                # The receiver may still have stored it, so the state is unknown: the next
+                # tick sends the current state again, whatever it is by then.
+                self.sent.pop(fault.name, None)
                 self.shop.log("warning", "watchdog", f"alert {fault.alert} not delivered: {error}")
 
 
@@ -43,7 +47,8 @@ def create_app(shop: Shop, webhook: str | None, every: float) -> FastAPI:
         if not webhook:
             yield
             return
-        async with httpx.AsyncClient(timeout=10) as client:
+        # Matching an alert to documents can take a while on a cold start.
+        async with httpx.AsyncClient(timeout=30) as client:
             watchdog = Watchdog(shop, webhook, client)
 
             async def watch() -> None:

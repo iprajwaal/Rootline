@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments
+.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments scenarios
 
 install:
 	uv sync
@@ -49,3 +49,7 @@ eval:
 # Search, intent and classification comparisons plus the threshold sweep, on dev only
 experiments:
 	uv run python -m rootline.eval.experiments
+
+# Scenarios 1-8 and 1b against the running stack (make demo first)
+scenarios:
+	uv run python -m rootline.scenarios
