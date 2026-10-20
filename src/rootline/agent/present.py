@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from rootline.agent.answer import Claim
+from rootline.agent.executor import Section, StepResult
 from rootline.agent.state import Step
 from rootline.agent.understand import Lane
 from rootline.core.models import SopStep
@@ -122,6 +123,33 @@ class Presenter:
             f" · {escape(passage.title)}"
         )
 
+    def step_result(
+        self, doc_id: str, version: int, section: Section, step: SopStep, result: StepResult
+    ) -> str:
+        label = "Rollback step" if section == "rollback" else "Step"
+        verdict = {
+            True: "expected result met",
+            False: "expected result not met",
+            None: "nothing to verify",
+        }[result.met]
+        parts = [
+            f"**{label} {step.ordinal} of {doc_id} v{version}** {escape(step.instruction)}",
+            f"Ran the sandbox {result.kind} {code(result.name)}."
+            f" Result: {verdict} ({escape(result.note)}).",
+        ]
+        if step.expect:
+            parts.append(f"Expected: {escape(step.expect)}")
+        return "\n\n".join([*parts, block(result.output)] if result.output else parts)
+
+    def run_yourself(self, step: SopStep, reason: str) -> str:
+        parts = [
+            f"Not run, {escape(reason)}. Run it yourself:",
+            block(step.command or step.instruction),
+        ]
+        if step.expect:
+            parts.append(f"Expect: {escape(step.expect)}")
+        return "\n\n".join(parts)
+
     def choose(self, hits: list[Hit]) -> str:
         cards = [self.card(hit, " · ".join(hit.evidence)) for hit in hits]
         return "\n\n".join(
@@ -190,6 +218,12 @@ def footer(steps: list[Step]) -> str:
 
 def escape(text: str) -> str:
     return MARKDOWN.sub(r"\\\1", text)
+
+
+def block(text: str) -> str:
+    longest = max((len(run) for run in BACKTICKS.findall(text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}text\n{text}\n{fence}"
 
 
 def code(text: str) -> str:

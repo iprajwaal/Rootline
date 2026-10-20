@@ -8,7 +8,14 @@ from fastapi.testclient import TestClient
 
 from rootline.api.app import app, get_analyzer, get_settings
 from rootline.config import Settings
-from rootline.incidents import AlertmanagerWebhook, Incidents
+from rootline.incidents import (
+    AgentUnavailable,
+    AlertmanagerWebhook,
+    Incidents,
+    open_chat,
+    recent_incidents,
+    thread_opener,
+)
 from rootline.ingest.analysis import Analyzer
 from rootline.retrieval.search import Searcher
 from rootline.retrieval.suggest import Suggester
@@ -138,3 +145,71 @@ def test_incidents_endpoint_takes_an_alertmanager_webhook(
     assert response.status_code == 200
     assert response.json()[0]["action"] == "opened"
     assert bad.status_code == 422
+
+
+def test_alert_waits_in_the_list_until_someone_opens_it(incidents: Incidents) -> None:
+    [result] = incidents.receive(webhook("firing", uuid.uuid4().hex))
+
+    [listed] = [
+        i for i in recent_incidents(incidents.conn, False, 100) if i.id == result.incident_id
+    ]
+
+    assert (listed.alert_name, listed.status, listed.chat_opened) == (
+        "OrdersDbPoolExhausted",
+        "open",
+        False,
+    )
+    assert listed.top_rca and listed.top_rca.startswith("RCA-2025-014 · ")
+    assert listed.top_sop and listed.top_sop.startswith("SOP-DB-001 · ")
+
+
+def test_opening_an_alert_starts_its_chat_once(incidents: Incidents) -> None:
+    opened: list[tuple[str, str]] = []
+    [result] = incidents.receive(webhook("firing", uuid.uuid4().hex))
+    assert result.incident_id
+
+    first = open_chat(incidents.conn, result.incident_id, lambda *args: opened.append(args))
+    second = open_chat(incidents.conn, result.incident_id, lambda *args: opened.append(args))
+
+    assert first == second == result.thread_id
+    assert len(opened) == 1 and opened[0][1].startswith("[FIRING:1] OrdersDbPoolExhausted")
+
+
+def test_agent_server_down_leaves_the_alert_ready_for_another_try(incidents: Incidents) -> None:
+    [result] = incidents.receive(webhook("firing", uuid.uuid4().hex))
+    assert result.incident_id
+
+    with pytest.raises(AgentUnavailable):
+        open_chat(incidents.conn, result.incident_id, thread_opener("http://127.0.0.1:1"))
+    opened = open_chat(incidents.conn, result.incident_id, lambda *args: None)
+
+    assert opened == result.thread_id
+
+
+def test_unknown_incident_cannot_be_opened(incidents: Incidents) -> None:
+    assert open_chat(incidents.conn, 987654, lambda *args: None) is None
+
+
+def test_alert_endpoints_list_open_and_allow_the_chat_ui(
+    search_db: psycopg.Connection, search_db_url: str, analyzer: Analyzer
+) -> None:
+    settings = Settings(
+        database_url=search_db_url, google_api_key="", agent_url="http://127.0.0.1:1"
+    )
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_analyzer] = lambda: analyzer
+    client = TestClient(app)
+    client.post("/incidents", json=webhook("firing", uuid.uuid4().hex).model_dump())
+
+    listed = client.get("/incidents")
+    down = client.post(f"/incidents/{listed.json()[0]['id']}/open")
+    missing = client.post("/incidents/987654/open")
+    preflight = client.options(
+        "/incidents",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
+    )
+    app.dependency_overrides.clear()
+
+    assert listed.status_code == 200 and listed.json()[0]["status"] == "open"
+    assert (down.status_code, missing.status_code) == (503, 404)
+    assert preflight.headers["access-control-allow-origin"] == "http://localhost:3000"

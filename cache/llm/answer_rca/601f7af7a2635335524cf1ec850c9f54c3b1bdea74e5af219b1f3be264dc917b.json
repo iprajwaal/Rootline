@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "Every pod had all 20 pool connections in use, and most of them were running the same reporting query.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The new sales report endpoint held connections for 40 to 90 seconds per request.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "The report query scanned the full orders table and had no statement timeout.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "The pool was sized for checkout traffic only.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

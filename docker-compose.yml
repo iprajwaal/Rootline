@@ -49,6 +49,9 @@ services:
   api:
     <<: *app
     command: uvicorn rootline.api.app:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
+      AGENT_URL: http://agent:2024
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -60,11 +63,26 @@ services:
   agent:
     <<: *app
     command: aegra serve --host 0.0.0.0 --port 2024
+    environment:
+      DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
+      SHOPLITE_URL: http://shoplite:8080
     depends_on:
       seed:
         condition: service_completed_successfully
     ports:
       - "2024:2024"
+
+  # The system the SOP steps act on. It breaks on request and posts alerts to the API.
+  shoplite:
+    build: sandbox/shoplite
+    profiles: [demo]
+    environment:
+      SHOPLITE_CATALOG: /app/catalog.yaml
+      SHOPLITE_ALERT_WEBHOOK: http://api:8000/incidents
+    volumes:
+      - ./corpus/catalog.yaml:/app/catalog.yaml:ro
+    ports:
+      - "8080:8080"
 
   ui:
     build: ui
