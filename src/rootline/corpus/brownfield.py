@@ -20,10 +20,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Flowable, SimpleDocTemplate, Spacer
 from reportlab.platypus import Paragraph as PdfParagraph
 
+from rootline.core.models import DocMeta, RcaRecord, SopRecord
 from rootline.corpus.docx_writer import docx_bytes
 from rootline.corpus.layout import EMPTY, Source, layout_for, load_document
 from rootline.corpus.md_writer import to_markdown
-from rootline.models import DocMeta, RcaRecord, SopRecord
 
 CORPUS = Path("corpus")
 PLAN_FILE = "sources/brownfield_plan.yaml"

@@ -5,6 +5,7 @@ from typing import Any
 
 from rootline.catalog import load_catalog
 from rootline.config import Settings
+from rootline.core.models import ParsedDoc, SopRecord
 from rootline.corpus.layout import load_document
 from rootline.ingest.classify import classify, split_mixed, template_label
 from rootline.ingest.extract import Record, extract
@@ -14,7 +15,6 @@ from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
 from rootline.llm.ledger import PostgresLedger
 from rootline.llm.structured import StructuredLLM, build_llm
-from rootline.models import ParsedDoc, SopRecord
 
 CORPUS = Path("corpus")
 OUTPUT = Path("eval/runs/extraction.jsonl")

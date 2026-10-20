@@ -1,6 +1,7 @@
-from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
+from rootline.core.interfaces import Parser
+from rootline.core.models import ParsedDoc
 from rootline.ingest.parsers import (
     docx_doc,
     email_doc,
@@ -10,11 +11,8 @@ from rootline.ingest.parsers import (
     slack_doc,
     text_doc,
 )
-from rootline.models import ParsedDoc
 
-ParseFn = Callable[[bytes, str], ParsedDoc]
-
-PARSERS: dict[str, ParseFn] = {
+PARSERS: dict[str, Parser] = {
     ".md": markdown_doc.parse,
     ".markdown": markdown_doc.parse,
     ".txt": text_doc.parse,

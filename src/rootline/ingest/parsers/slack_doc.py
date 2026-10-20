@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import Any
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
-from rootline.models import ParsedDoc
 
 
 def parse(data: bytes, source_key: str) -> ParsedDoc:

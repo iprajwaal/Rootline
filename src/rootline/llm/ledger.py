@@ -1,9 +1,6 @@
 import logging
 import time
-import uuid
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
-from contextvars import ContextVar
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 from uuid import UUID
@@ -13,10 +10,9 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, LLMResult
 
-log = logging.getLogger(__name__)
+from rootline.core.context import request_id
 
-# Set once per API request or CLI run, so all LLM calls it makes share one ID.
-REQUEST_ID: ContextVar[str | None] = ContextVar("request_id", default=None)
+log = logging.getLogger(__name__)
 
 INSERT = """
     insert into ledger (request_id, kind, task, model, prompt_version, input_tokens,
@@ -124,19 +120,6 @@ def usage(response: LLMResult) -> tuple[int, int]:
     if isinstance(message, AIMessage) and message.usage_metadata:
         return message.usage_metadata["input_tokens"], message.usage_metadata["output_tokens"]
     return 0, 0
-
-
-def request_id() -> str:
-    return REQUEST_ID.get() or uuid.uuid4().hex
-
-
-@contextmanager
-def request_scope(request: str) -> Iterator[None]:
-    token = REQUEST_ID.set(request)
-    try:
-        yield
-    finally:
-        REQUEST_ID.reset(token)
 
 
 def elapsed_ms(started: float) -> int:

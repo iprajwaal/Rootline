@@ -2,7 +2,7 @@ import re
 from email.utils import parsedate_to_datetime
 
 from rootline.catalog import Catalog
-from rootline.models import DocFacts, ParsedDoc
+from rootline.core.models import DocFacts, ParsedDoc
 
 DOC_ID = re.compile(r"\b(?:SOP|RCA|REF)-[A-Z0-9]+-\d{3}\b")
 ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")

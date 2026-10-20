@@ -3,15 +3,16 @@ from dataclasses import dataclass
 from typing import Literal
 
 from rootline.catalog import Catalog
+from rootline.core.interfaces import Classifier
+from rootline.core.models import Classification, DocFacts, ParsedDoc
 from rootline.ingest.chunking import Chunk, chunk_document
-from rootline.ingest.classify import AskLlm, classify, split_mixed, template_label
+from rootline.ingest.classify import RULES, AskLlm, classify, split_mixed, template_label
 from rootline.ingest.embedding import Embedder
 from rootline.ingest.extract import AskRecord, Extraction, extract
 from rootline.ingest.facts import extract_facts
 from rootline.ingest.hashing import content_hash, raw_sha256
 from rootline.ingest.parsing import parse_bytes
 from rootline.ingest.redaction import redact_doc
-from rootline.models import Classification, DocFacts, ParsedDoc
 
 Label = Literal["rca", "sop", "ref"]
 Origin = Literal["greenfield", "brownfield", "reference"]
@@ -46,10 +47,11 @@ class Analyzer:
     embedder: Embedder
     ask_label: AskLlm | None
     ask_record: AskRecord | None
+    first: Classifier = RULES
 
     def analyse(self, source_key: str, data: bytes) -> Analysis:
         doc, secrets = redact_doc(parse_bytes(data, source_key))
-        classification = classify(doc, self.ask_label)
+        classification = classify(doc, self.ask_label, self.first)
         pieces: list[tuple[ParsedDoc, Label]] = []
         if classification.label == "mixed":
             rca, sop = split_mixed(doc)

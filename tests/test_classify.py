@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.classify import (
     LlmVerdict,
     classify,
@@ -14,7 +15,6 @@ from rootline.ingest.document_builder import DocBuilder
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
 from rootline.llm.structured import LLMUnavailable
-from rootline.models import ParsedDoc
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 

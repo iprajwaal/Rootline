@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from rootline.models import Classification, FishboneBranch, RcaRecord, SopRecord, SopStep
+from rootline.core.models import Classification, FishboneBranch, RcaRecord, SopRecord, SopStep
 
 
 def steps(*ordinals: int) -> list[SopStep]:

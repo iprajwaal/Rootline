@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from rootline.ingest.parsing import parse_file
-from rootline.ingest.redaction import redact, redact_doc
+from rootline.ingest.redaction import Redaction, redact, redact_doc
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 TRUTH: list[dict[str, Any]] = [
@@ -95,3 +95,22 @@ def test_redacted_doc_offsets_still_match() -> None:
 
     for block in doc.blocks:
         assert doc.text[block.start : block.end] == block.text
+
+
+def test_detect_secrets_catches_a_quoted_secret_our_rules_miss() -> None:
+    result = redact('db_password: "s3cr3t-Value!"')
+
+    assert result.text == 'db_password: "[REDACTED:SECRET_KEYWORD]"'
+    assert result.kinds == ["SECRET_KEYWORD"]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "restart the cache with kubectl rollout restart statefulset/cache",
+        "set DB_POOL_MAX=50 and check the password reset page",
+        'psql -h orders-db -U shop -c "select count(*) from pg_stat_activity"',
+    ],
+)
+def test_detect_secrets_leaves_ordinary_ops_lines_alone(line: str) -> None:
+    assert redact(line) == Redaction(line, [])

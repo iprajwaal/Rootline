@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://rootline:rootline@localhost:5432/rootline"
     raw_dir: Path = Path("data/raw")
     catalog_path: Path = Path("corpus/catalog.yaml")
+    # Labelled documents the classifier learns from.
+    corpus_dir: Path = Path("corpus")
     embed_model: str = "BAAI/bge-small-en-v1.5"
     model_cache_dir: Path = Path("data/models")
     google_api_key: str = ""
@@ -30,3 +32,4 @@ class Settings(BaseSettings):
     public_api_url: str = "http://localhost:8000"
     # Older documents are still shown, with a note to check they still hold.
     stale_after_days: int = 365
+    log_level: str = "info"

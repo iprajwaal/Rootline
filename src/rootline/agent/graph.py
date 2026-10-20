@@ -14,7 +14,8 @@ from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, footer
 from rootline.agent.state import AgentState, Step
 from rootline.agent.understand import Understander
-from rootline.llm.ledger import elapsed_ms, request_scope
+from rootline.core.context import request_scope
+from rootline.llm.ledger import elapsed_ms
 from rootline.llm.structured import LLMUnavailable
 
 log = logging.getLogger(__name__)

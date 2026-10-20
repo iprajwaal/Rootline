@@ -5,7 +5,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel
 
-from rootline.models import SopStep
+from rootline.core.models import SopStep
 
 DOCUMENT = """
     select d.doc_id, d.doc_type, d.title, d.status, d.origin, d.services,

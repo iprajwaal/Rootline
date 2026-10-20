@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 import yaml
 
-from rootline.models import DocMeta, RcaRecord, SopRecord
+from rootline.core.models import DocMeta, RcaRecord, SopRecord
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 CATALOG: dict[str, Any] = yaml.safe_load((CORPUS / "catalog.yaml").read_text())

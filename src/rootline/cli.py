@@ -6,8 +6,9 @@ from pathlib import Path
 import psycopg
 
 from rootline.config import Settings
+from rootline.core.context import REQUEST_ID
+from rootline.core.logs import configure_logging
 from rootline.ingest.factory import build_analyzer, build_store, ingest_path
-from rootline.llm.ledger import REQUEST_ID
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -22,8 +23,9 @@ def main(argv: list[str] | None = None) -> None:
 
     REQUEST_ID.set(uuid.uuid4().hex)
     settings = Settings()
+    configure_logging(settings.log_level)
     with psycopg.connect(settings.database_url, autocommit=True) as conn:
-        store = build_store(conn, settings, build_analyzer(settings))
+        store = build_store(conn, settings, build_analyzer(settings), "cli")
         if args.command == "delete":
             outcome = store.delete(args.source_key)
             print(f"delete source={outcome.source_key} docs={','.join(outcome.doc_ids) or '-'}")

@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 
-from rootline.models import Block, DocFacts, ParsedDoc, RcaRecord, SopRecord
+from rootline.core.models import Block, DocFacts, ParsedDoc, RcaRecord, SopRecord
 
 # bge-small reads at most 512 tokens; about 4 characters per token leaves headroom.
 MAX_CHARS = 1600
@@ -13,6 +13,7 @@ KIND_NAMES = {
     "rca": "root cause analysis",
     "ref": "reference",
 }
+HEADER_ID = re.compile(r"^\[(\w+) · [^·\]]+ · ")
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,12 @@ def chunk_document(
         for piece in pack(blocks):
             chunks.append(Chunk(section, len(chunks), f"{header} {section}\n{piece}"))
     return chunks
+
+
+def stamp(body: str, doc_id: str, version: int) -> str:
+    # The version is only known when the row is written, after the chunk was embedded.
+    # A few characters of header do not move the vector, so it is not embedded again.
+    return HEADER_ID.sub(lambda m: f"[{m.group(1)} · {doc_id} v{version} · ", body, count=1)
 
 
 def card_text(

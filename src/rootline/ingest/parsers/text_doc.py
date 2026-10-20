@@ -1,7 +1,7 @@
 import re
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
-from rootline.models import ParsedDoc
 
 LIST_MARKER = re.compile(r"^(?:[-*•]\s+|\d+[.)]\s+)")
 BULLET = re.compile(r"^[-*•]\s+")

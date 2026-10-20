@@ -145,3 +145,12 @@ def test_api_uploads_and_deletes_a_document(
     assert (uploaded.status_code, uploaded.json()["action"]) == (200, "created")
     assert json.loads(deleted.text)["action"] == "deleted"
     assert (missing.status_code, unsupported.status_code) == (404, 415)
+
+
+def test_section_chunks_carry_the_id_and_version_in_their_header(store: Store) -> None:
+    store.ingest("ops/sop.md", (CORPUS / "greenfield" / "sop-cache-001.md").read_bytes())
+
+    bodies = [
+        row[0] for row in store.conn.execute("select body from chunks where section <> 'card'")
+    ]
+    assert bodies and all(body.startswith("[SOP · SOP-CACHE-001 v1 · ") for body in bodies)

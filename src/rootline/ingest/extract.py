@@ -4,9 +4,9 @@ from typing import Literal
 from pydantic import BaseModel
 from rapidfuzz import fuzz
 
+from rootline.core.models import ParsedDoc, RcaRecord, SopRecord
 from rootline.ingest.template_extract import template_rca, template_sop
 from rootline.llm.structured import LLMUnavailable
-from rootline.models import ParsedDoc, RcaRecord, SopRecord
 
 # An instruction may differ a little (spacing, case, a missing full stop). A command is run as
 # written, so it must appear exactly: a fuzzy score would let DB_POOL_MAX=500 pass for =50.

@@ -8,7 +8,10 @@ from typing import Any, Literal
 import psycopg
 from psycopg.rows import dict_row
 
+from rootline.core.context import REQUEST_ID
+from rootline.core.models import SopRecord
 from rootline.ingest.analysis import Analysis, Analyzer, Part
+from rootline.ingest.chunking import stamp
 from rootline.ingest.classify import needs_review
 from rootline.ingest.duplicates import (
     DUPLICATE_AT,
@@ -18,7 +21,6 @@ from rootline.ingest.duplicates import (
 )
 from rootline.ingest.embedding import vector_literal
 from rootline.ingest.hashing import raw_sha256, store_raw
-from rootline.models import SopRecord
 
 Action = Literal["unchanged", "alias", "created", "updated", "review_only", "deleted"]
 CLUSTER_CANDIDATES = 10
@@ -46,6 +48,7 @@ class Store:
     analyzer: Analyzer
     raw_dir: Path
     embed_model: str
+    actor: str = "system"
 
     def ingest(self, source_key: str, data: bytes) -> Outcome:
         raw = raw_sha256(data)
@@ -71,10 +74,10 @@ class Store:
                     " reason = excluded.reason, raw_sha256 = excluded.raw_sha256",
                     (source_key, doc_id, reason, raw),
                 )
-                return Outcome(source_key, "alias", [doc_id])
+                return self.audited(Outcome(source_key, "alias", [doc_id]))
             if not analysis.parts:
                 self.review(None, source_key, "unknown_type", analysis.classification.model_dump())
-                return Outcome(source_key, "review_only", [])
+                return self.audited(Outcome(source_key, "review_only", []))
 
             doc_ids = [self.write_part(part, analysis, current) for part in analysis.parts]
             written = {part.key for part in analysis.parts}
@@ -85,7 +88,7 @@ class Store:
                 self.link(doc_ids[0], doc_ids[1], "split_from")
                 self.link(doc_ids[1], doc_ids[0], "split_from")
             self.refresh_superseded()
-        return Outcome(source_key, "updated" if current else "created", doc_ids)
+            return self.audited(Outcome(source_key, "updated" if current else "created", doc_ids))
 
     def delete(self, source_key: str) -> Outcome:
         with self.conn.transaction():
@@ -96,7 +99,7 @@ class Store:
                 "delete from aliases where source_key = %s returning doc_id", (source_key,)
             )
             if removed:
-                return Outcome(source_key, "deleted", [removed[0]["doc_id"]])
+                return self.audited(Outcome(source_key, "deleted", [removed[0]["doc_id"]]))
             current = self.rows(CURRENT_DOCS, {"key": source_key})
             for row in current:
                 successor = self.rows(
@@ -116,7 +119,7 @@ class Store:
                 else:
                     self.tombstone(row["doc_id"])
             self.refresh_superseded()
-        return Outcome(source_key, "deleted", [row["doc_id"] for row in current])
+            return self.audited(Outcome(source_key, "deleted", [row["doc_id"] for row in current]))
 
     def sync_removed(self, prefix: str, seen: set[str]) -> list[Outcome]:
         keys = {
@@ -130,6 +133,14 @@ class Store:
             )
         }
         return [self.delete(key) for key in sorted(keys - seen)]
+
+    def audited(self, outcome: Outcome) -> Outcome:
+        self.run(
+            "insert into audit (actor, action, source_key, doc_ids, request_id)"
+            " values (%s, %s, %s, %s, %s)",
+            (self.actor, outcome.action, outcome.source_key, outcome.doc_ids, REQUEST_ID.get()),
+        )
+        return outcome
 
     def unchanged(self, source_key: str, raw: str) -> Outcome | None:
         current = self.rows(CURRENT_DOCS, {"key": source_key})
@@ -258,7 +269,7 @@ class Store:
                         version,
                         chunk.section,
                         chunk.ordinal,
-                        chunk.body,
+                        stamp(chunk.body, doc_id, version),
                         vector_literal(vector),
                         self.embed_model,
                     )

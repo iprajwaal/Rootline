@@ -5,9 +5,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from rootline.core.interfaces import Classifier
+from rootline.core.models import Block, Classification, ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
 from rootline.llm.structured import LLMUnavailable
-from rootline.models import Block, Classification, ParsedDoc
 
 Side = Literal["rca", "sop", ""]
 
@@ -75,28 +76,59 @@ class Scored:
     side: Side
 
 
-def classify(doc: ParsedDoc, ask_llm: AskLlm | None = None) -> Classification:
+@dataclass(frozen=True)
+class RuleClassifier:
+    def classify(self, doc: ParsedDoc) -> Classification:
+        return rule_classification(score_blocks(doc))
+
+
+@dataclass(frozen=True)
+class LlmClassifier:
+    ask_llm: AskLlm
+
+    def classify(self, doc: ParsedDoc) -> Classification:
+        verdict = self.ask_llm(llm_prompt(doc))
+        return Classification(
+            label=verdict.label,
+            confidence=verdict.confidence,
+            method="llm",
+            evidence=[verdict.reason],
+        )
+
+
+RULES = RuleClassifier()
+
+
+def classify(
+    doc: ParsedDoc, ask_llm: AskLlm | None = None, first: Classifier = RULES
+) -> Classification:
     template = template_label(doc)
     if template:
         return Classification(
             label=template, confidence=1.0, method="template", evidence=["template structure"]
         )
 
-    rules = rule_classification(score_blocks(doc))
-    if rules.confidence >= UNSURE_HIGH or ask_llm is None:
-        return rules
+    rules = RULES.classify(doc)
+    # Mixed and empty documents are judged by their layout, which one score cannot show.
+    guess = first.classify(doc) if rules.label in ("rca", "sop") else rules
+    if guess.confidence >= UNSURE_HIGH or ask_llm is None:
+        return guess
     try:
-        verdict = ask_llm(llm_prompt(doc))
+        verdict = LlmClassifier(ask_llm).classify(doc)
     except LLMUnavailable as error:
-        return rules.model_copy(update={"evidence": [*rules.evidence, f"llm unavailable: {error}"]})
+        return guess.model_copy(update={"evidence": [*guess.evidence, f"llm unavailable: {error}"]})
 
-    # The model's own confidence is not calibrated. Its label is trusted only when the rules
-    # lean the same way; otherwise it is kept but held below the review line.
-    agrees = verdict.label == rules.label
+    # The model's own confidence is not calibrated. Its label is trusted only when the first
+    # guess leans the same way; otherwise it is kept but held below the review line.
+    agrees = verdict.label == guess.label
     confidence = verdict.confidence if agrees else min(verdict.confidence, REVIEW_BELOW - 0.01)
-    note = "rules agree" if agrees else f"rules said {rules.label}, needs a person to confirm"
-    return Classification(
-        label=verdict.label, confidence=confidence, method="llm", evidence=[verdict.reason, note]
+    note = (
+        f"{guess.method} agrees"
+        if agrees
+        else f"{guess.method} said {guess.label}, needs a person to confirm"
+    )
+    return verdict.model_copy(
+        update={"confidence": confidence, "evidence": [*verdict.evidence, note]}
     )
 
 
@@ -148,15 +180,10 @@ def text_side(text: str) -> Side:
 
 
 def rule_classification(scored: list[Scored]) -> Classification:
-    weights = {"rca": 0, "sop": 0}
-    for item in scored:
-        if item.side:
-            weights[item.side] += len(item.block.text)
-    total = weights["rca"] + weights["sop"]
+    share, total = procedure_share(scored)
     if not total:
         return Classification(label="unknown", confidence=0.0, method="rules", evidence=[])
 
-    share = weights["sop"] / total
     evidence = [f"procedure share {share:.2f} of {total} scored characters"]
     if min(share, 1 - share) >= MIXED_MIN_SHARE and len(regions(scored)) == 2:
         return Classification(label="mixed", confidence=0.8, method="rules", evidence=evidence)
@@ -164,6 +191,15 @@ def rule_classification(scored: list[Scored]) -> Classification:
     return Classification(
         label=label, confidence=max(share, 1 - share), method="rules", evidence=evidence
     )
+
+
+def procedure_share(scored: list[Scored]) -> tuple[float, int]:
+    weights = {"rca": 0, "sop": 0}
+    for item in scored:
+        if item.side:
+            weights[item.side] += len(item.block.text)
+    total = weights["rca"] + weights["sop"]
+    return (weights["sop"] / total if total else 0.5), total
 
 
 def regions(scored: list[Scored]) -> list[Side]:

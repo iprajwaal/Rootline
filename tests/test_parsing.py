@@ -3,10 +3,10 @@ from pathlib import Path
 import docx
 import pytest
 
+from rootline.core.models import ParsedDoc, SopRecord
 from rootline.corpus.layout import load_document
 from rootline.ingest.hashing import content_hash, raw_sha256, store_raw
 from rootline.ingest.parsing import UnsupportedFormat, parse_bytes, parse_file
-from rootline.models import ParsedDoc, SopRecord
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 CORPUS_FILES = sorted(

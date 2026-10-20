@@ -5,6 +5,7 @@ from rootline.agent.present import Presenter
 from rootline.agent.understand import Understander, intent_asker
 from rootline.catalog import load_catalog
 from rootline.config import Settings
+from rootline.core.logs import configure_logging
 from rootline.ingest.embedding import Embedder
 from rootline.llm.ledger import PostgresLedger
 from rootline.llm.structured import build_llm
@@ -25,4 +26,6 @@ def default_graph(settings: Settings) -> Graph:
 
 
 # Loaded by the LangGraph server through langgraph.json.
-graph = default_graph(Settings())
+settings = Settings()
+configure_logging(settings.log_level)
+graph = default_graph(settings)

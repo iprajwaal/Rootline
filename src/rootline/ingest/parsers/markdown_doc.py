@@ -5,8 +5,8 @@ import yaml
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
-from rootline.models import ParsedDoc
 
 FRONT_MATTER = "---\n"
 

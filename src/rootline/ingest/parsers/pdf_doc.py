@@ -7,9 +7,9 @@ from typing import Any
 import pdfplumber
 from pdfplumber.page import Page
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
 from rootline.ingest.parsers.text_doc import add_text
-from rootline.models import ParsedDoc
 
 PAGE_NUMBER = re.compile(r"\bpage \d+( of \d+)?\b", re.IGNORECASE)
 DIGITS = re.compile(r"\d+")

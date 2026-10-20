@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 import yaml
 
-from rootline.models import DocMeta, RcaRecord, SopRecord, SopStep
+from rootline.core.models import DocMeta, RcaRecord, SopRecord, SopStep
 
 COMPANY = "ShopLite Commerce"
 EMPTY = "None."

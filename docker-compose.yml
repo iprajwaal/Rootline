@@ -7,11 +7,12 @@ x-app: &app
   environment:
     DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
   # The catalog, the committed LLM cache and the embedding model come from the repo, so the
-  # agent and the API read the same files as the tests.
+  # agent and the API read the same files as the tests. Raw uploads are kept by hash.
   volumes:
     - ./corpus:/app/corpus:ro
     - ./cache:/app/cache
     - ./data/models:/app/data/models
+    - raw:/app/data/raw
 
 services:
   postgres:
@@ -37,6 +38,14 @@ services:
       postgres:
         condition: service_healthy
 
+  # Ingests the corpus once. A second run finds every file unchanged and does nothing.
+  seed:
+    <<: *app
+    command: rootline ingest corpus/greenfield corpus/brownfield corpus/reference corpus/hard
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     <<: *app
     command: uvicorn rootline.api.app:app --host 0.0.0.0 --port 8000
@@ -46,11 +55,13 @@ services:
     ports:
       - "8000:8000"
 
+  # Aegra serves the LangGraph API with threads and checkpoints in Postgres, so chat memory
+  # survives a restart.
   agent:
     <<: *app
-    command: langgraph dev --host 0.0.0.0 --port 2024 --no-browser --no-reload
+    command: aegra serve --host 0.0.0.0 --port 2024
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
     ports:
       - "2024:2024"
@@ -64,3 +75,4 @@ services:
 
 volumes:
   pgdata:
+  raw:

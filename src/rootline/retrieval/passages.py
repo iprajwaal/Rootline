@@ -27,7 +27,7 @@ class Passage(BaseModel):
 
     @property
     def text(self) -> str:
-        # Section chunks start with a "[RCA · ID · services] section" header line.
+        # Section chunks start with a "[RCA · ID vN · services] section" header line.
         return self.body.split("\n", 1)[-1]
 
 

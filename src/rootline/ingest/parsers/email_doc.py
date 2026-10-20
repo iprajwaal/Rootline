@@ -5,9 +5,9 @@ from email.parser import BytesParser
 
 from bs4 import BeautifulSoup
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
 from rootline.ingest.parsers.text_doc import add_text
-from rootline.models import ParsedDoc
 
 REPLY_PREFIX = re.compile(r"^(?:(?:re|fw|fwd)\s*:\s*)+", re.IGNORECASE)
 HEADERS = ("from", "to", "date", "subject")

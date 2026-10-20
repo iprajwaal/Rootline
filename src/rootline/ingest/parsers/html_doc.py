@@ -2,8 +2,8 @@ import re
 
 from bs4 import BeautifulSoup, Tag
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
-from rootline.models import ParsedDoc
 
 BOILERPLATE_TAGS = ["script", "style", "nav", "header", "footer"]
 BOILERPLATE_IDS = ["header", "footer", "breadcrumbs", "navigation", "sidebar"]

@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 from dataclasses import replace
@@ -317,6 +318,17 @@ def test_tracing_reuses_one_langfuse_handler_per_process() -> None:
 
     assert isinstance(handler, CallbackHandler)
     assert tracing_callbacks(settings) == [handler]
+
+
+def test_traced_graph_config_survives_the_servers_deep_copy() -> None:
+    settings = Settings(
+        langfuse_public_key="pk-lf-test",
+        langfuse_secret_key="sk-lf-test",
+        langfuse_base_url="http://127.0.0.1:1",
+    )
+    config = {"callbacks": tracing_callbacks(settings)}
+
+    assert copy.deepcopy(config)["callbacks"][0] is config["callbacks"][0]
 
 
 def test_traced_data_is_redacted_before_it_is_sent() -> None:

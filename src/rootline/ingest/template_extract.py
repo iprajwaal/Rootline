@@ -1,6 +1,6 @@
 import re
 
-from rootline.models import (
+from rootline.core.models import (
     ActionItem,
     Block,
     FishboneBranch,

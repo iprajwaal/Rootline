@@ -6,7 +6,7 @@ from datetime import date
 from rootline.agent.answer import Claim
 from rootline.agent.state import Step
 from rootline.agent.understand import Lane
-from rootline.models import SopStep
+from rootline.core.models import SopStep
 from rootline.retrieval.documents import Document
 from rootline.retrieval.passages import Passage
 from rootline.retrieval.search import LANES, Hit, LaneResult, SearchResponse

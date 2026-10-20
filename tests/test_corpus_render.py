@@ -3,11 +3,11 @@ from pathlib import Path
 import docx
 from pypdf import PdfReader
 
+from rootline.core.models import SopRecord
 from rootline.corpus.docx_writer import write_docx
 from rootline.corpus.layout import SOP_SECTIONS, Heading, Layout, layout_for, load_source
 from rootline.corpus.md_writer import to_markdown, write_markdown
 from rootline.corpus.pdf_writer import write_pdf
-from rootline.models import SopRecord
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 SOURCE_DIR = CORPUS / "sources" / "greenfield"

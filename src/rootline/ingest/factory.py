@@ -5,15 +5,16 @@ import psycopg
 
 from rootline.catalog import load_catalog
 from rootline.config import Settings
+from rootline.core.models import RcaRecord, SopRecord
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.classify import CLASSIFY_PROMPT_VERSION, AskLlm, LlmVerdict
 from rootline.ingest.embedding import Embedder
 from rootline.ingest.extract import EXTRACT_PROMPT_VERSION, AskRecord, Record
+from rootline.ingest.learned import labelled_examples, train
 from rootline.ingest.parsing import PARSERS
 from rootline.ingest.store import Outcome, Store
 from rootline.llm.ledger import PostgresLedger, RecordCall
 from rootline.llm.structured import StructuredLLM, build_llm
-from rootline.models import RcaRecord, SopRecord
 
 
 def build_analyzer(settings: Settings, record: RecordCall | None = None) -> Analyzer:
@@ -23,6 +24,7 @@ def build_analyzer(settings: Settings, record: RecordCall | None = None) -> Anal
         embedder=Embedder(settings.embed_model, settings.model_cache_dir),
         ask_label=label_asker(llm),
         ask_record=record_asker(llm),
+        first=train(labelled_examples(settings.corpus_dir)),
     )
 
 
@@ -41,8 +43,10 @@ def record_asker(llm: StructuredLLM) -> AskRecord:
     return ask_record
 
 
-def build_store(conn: psycopg.Connection[Any], settings: Settings, analyzer: Analyzer) -> Store:
-    return Store(conn, analyzer, settings.raw_dir, settings.embed_model)
+def build_store(
+    conn: psycopg.Connection[Any], settings: Settings, analyzer: Analyzer, actor: str
+) -> Store:
+    return Store(conn, analyzer, settings.raw_dir, settings.embed_model, actor)
 
 
 def ingest_path(store: Store, path: Path, sync: bool = False) -> list[Outcome]:

@@ -4,8 +4,12 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from detect_secrets.core.plugins.util import get_mapping_from_secret_type_to_class
+from detect_secrets.core.scan import scan_line
+from detect_secrets.settings import get_settings
+
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
-from rootline.models import ParsedDoc
 
 SEPARATORS = re.compile(r"[-_/.=+]")
 PLACEHOLDER = re.compile(r"\[REDACTED:[A-Z_]+\]")
@@ -94,6 +98,16 @@ RULES = [
 ]
 
 
+# Its entropy plugins flag almost every word of a single line; our own entropy rule covers
+# random strings, so only the format and keyword plugins run. Set once: these settings are
+# global to the process.
+PLUGINS: list[str] = [
+    plugin.__name__ for plugin in get_mapping_from_secret_type_to_class().values()
+]
+get_settings().configure_plugins([{"name": name} for name in PLUGINS if "HighEntropy" not in name])
+MIN_SECRET = 6
+
+
 def placeholder(kind: str) -> str:
     return f"[REDACTED:{kind}]"
 
@@ -102,7 +116,21 @@ def redact(text: str) -> Redaction:
     kinds: list[str] = []
     for rule in RULES:
         text = apply(rule, text, kinds)
-    return Redaction(text, kinds)
+    return Redaction(scan_leftovers(text, kinds), kinds)
+
+
+def scan_leftovers(text: str, kinds: list[str]) -> str:
+    # detect-secrets runs last and catches formats our rules do not know, such as Stripe or
+    # Twilio keys and quoted keyword assignments.
+    for line in dict.fromkeys(text.splitlines()):
+        for secret in scan_line(line) if line.strip() else ():
+            value = secret.secret_value or ""
+            if len(value) < MIN_SECRET or "REDACTED" in value or value not in text:
+                continue
+            kind = secret.type.upper().replace(" ", "_")
+            text = text.replace(value, placeholder(kind))
+            kinds.append(kind)
+    return text
 
 
 def apply(rule: Rule, text: str, kinds: list[str]) -> str:

@@ -2,7 +2,7 @@ import re
 import unicodedata
 from typing import Any
 
-from rootline.models import Block, BlockKind, ParsedDoc
+from rootline.core.models import Block, BlockKind, ParsedDoc
 
 ZERO_WIDTH = re.compile("[​‌‍⁠﻿]")
 SPACES = re.compile(r"[ \t]+")

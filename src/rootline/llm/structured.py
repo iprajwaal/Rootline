@@ -11,15 +11,8 @@ from langchain_core.runnables.config import ensure_config, merge_configs
 from pydantic import BaseModel
 
 from rootline.config import Settings
-from rootline.llm.ledger import (
-    Call,
-    Kind,
-    LedgerCallback,
-    Prices,
-    RecordCall,
-    elapsed_ms,
-    request_id,
-)
+from rootline.core.context import request_id
+from rootline.llm.ledger import Call, Kind, LedgerCallback, Prices, RecordCall, elapsed_ms
 from rootline.llm.tracing import tracing_callbacks
 
 

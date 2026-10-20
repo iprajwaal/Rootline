@@ -10,9 +10,9 @@ import pytest
 import yaml
 from pypdf import PdfReader
 
+from rootline.core.models import SopRecord
 from rootline.corpus.brownfield import generate
 from rootline.corpus.layout import load_document
-from rootline.models import SopRecord
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 OUTPUT_DIR = CORPUS / "brownfield"

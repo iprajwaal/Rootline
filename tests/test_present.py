@@ -4,7 +4,7 @@ from typing import Any
 
 from rootline.agent.present import Presenter, checklist, code, footer
 from rootline.agent.state import Step
-from rootline.models import SopStep
+from rootline.core.models import SopStep
 from rootline.retrieval.search import Hit, Linked
 
 PRESENTER = Presenter("http://rootline.test", 365, today=lambda: date(2026, 10, 20))

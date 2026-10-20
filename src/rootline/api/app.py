@@ -1,5 +1,6 @@
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from functools import cache
 from typing import Annotated, Any
@@ -9,16 +10,24 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Respo
 from pydantic import BaseModel, Field
 
 from rootline.config import Settings
+from rootline.core.context import REQUEST_ID
+from rootline.core.logs import configure_logging
 from rootline.incidents import AlertmanagerWebhook, IncidentResult, Incidents
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
-from rootline.llm.ledger import REQUEST_ID
 from rootline.retrieval.documents import Document, read_document
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
 
-app = FastAPI(title="rootline")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    configure_logging(get_settings().log_level)
+    yield
+
+
+app = FastAPI(title="rootline", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -70,7 +79,7 @@ def upload_document(
     key = source_key or f"uploads/{file.filename}"
     with psycopg.connect(settings.database_url, autocommit=True) as conn:
         try:
-            outcome = build_store(conn, settings, analyzer).ingest(key, file.file.read())
+            outcome = build_store(conn, settings, analyzer, "api").ingest(key, file.file.read())
         except UnsupportedFormat as error:
             raise HTTPException(status_code=415, detail=str(error)) from error
     return asdict(outcome)
@@ -81,7 +90,7 @@ def delete_document(
     source_key: str, settings: SettingsDep, analyzer: AnalyzerDep
 ) -> dict[str, Any]:
     with psycopg.connect(settings.database_url, autocommit=True) as conn:
-        outcome = build_store(conn, settings, analyzer).delete(source_key)
+        outcome = build_store(conn, settings, analyzer, "api").delete(source_key)
     if not outcome.doc_ids:
         raise HTTPException(status_code=404, detail=f"no document for {source_key}")
     return asdict(outcome)

@@ -19,12 +19,20 @@ def tracing_callbacks(settings: Settings) -> list[BaseCallbackHandler]:
     return [handler]
 
 
+class SharedHandler(CallbackHandler):
+    # The agent server deep-copies each graph's config per run, and a Langfuse client cannot
+    # be copied. When the copy fails the server drops the checkpointer and chat memory with
+    # it, so a copy hands back the same handler.
+    def __deepcopy__(self, memo: dict[int, Any]) -> "SharedHandler":
+        return self
+
+
 @cache
 def langfuse_handler(public_key: str, secret_key: str, base_url: str) -> CallbackHandler:
     # One handler per process. The graph and the LLM calls inside its nodes then hold the
     # same object, and LangChain adds it to a run only once.
     Langfuse(public_key=public_key, secret_key=secret_key, base_url=base_url, mask=mask)
-    return CallbackHandler(public_key=public_key)
+    return SharedHandler(public_key=public_key)
 
 
 def mask(*, data: Any, **kwargs: Any) -> Any:

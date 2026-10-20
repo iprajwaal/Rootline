@@ -164,5 +164,5 @@ class RcaRecord(BaseModel):
 class Classification(BaseModel):
     label: Literal["rca", "sop", "ref", "mixed", "unknown"]
     confidence: float = Field(ge=0.0, le=1.0)
-    method: Literal["template", "rules", "llm"]
+    method: Literal["template", "rules", "lr", "llm"]
     evidence: list[str] = []

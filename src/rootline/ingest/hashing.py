@@ -3,7 +3,7 @@ import os
 import uuid
 from pathlib import Path
 
-from rootline.models import ParsedDoc
+from rootline.core.models import ParsedDoc
 
 
 def raw_sha256(data: bytes) -> str:

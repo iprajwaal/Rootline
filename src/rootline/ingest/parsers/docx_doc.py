@@ -6,9 +6,9 @@ from docx.table import Table
 from docx.text.hyperlink import Hyperlink
 from docx.text.paragraph import Paragraph
 
+from rootline.core.models import ParsedDoc
 from rootline.ingest.document_builder import DocBuilder
 from rootline.ingest.parsers.text_doc import add_text
-from rootline.models import ParsedDoc
 
 STRUCTURE_STYLES = ("Title", "Heading", "List")
 

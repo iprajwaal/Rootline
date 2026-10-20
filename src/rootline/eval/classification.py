@@ -1,27 +1,29 @@
 import json
 import time
 from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from rootline.config import Settings
+from rootline.core.models import Classification, ParsedDoc
 from rootline.ingest.classify import (
     AskLlm,
+    LlmClassifier,
     classify,
-    llm_prompt,
     needs_review,
     template_label,
 )
 from rootline.ingest.factory import label_asker
+from rootline.ingest.learned import Example, LogisticClassifier, labelled_examples, train
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
 from rootline.llm.ledger import PostgresLedger
 from rootline.llm.structured import build_llm
-from rootline.models import Classification, ParsedDoc
 
 CORPUS = Path("corpus")
 OUTPUT = Path("eval/runs/classification.jsonl")
-MODES = ("rules", "cascade", "llm")
+MODES = ("rules", "lr", "llm", "cascade", "lr_cascade")
 
 
 def truth_labels(corpus: Path) -> dict[str, tuple[str, str]]:
@@ -37,24 +39,58 @@ def truth_labels(corpus: Path) -> dict[str, tuple[str, str]]:
     return labels
 
 
-def run_mode(mode: str, doc: ParsedDoc, ask_llm: AskLlm) -> Classification:
+def source_groups(corpus: Path) -> dict[str, frozenset[str]]:
+    groups = {
+        f"greenfield/{path.name}": frozenset([path.stem.upper()])
+        for path in sorted((corpus / "greenfield").iterdir())
+    }
+    for name in ("brownfield", "hard"):
+        for line in (corpus / "ground_truth" / f"{name}.jsonl").read_text().splitlines():
+            row = json.loads(line)
+            groups[row["file"]] = frozenset(row.get("source_ids", [row["file"]]))
+    return groups
+
+
+@dataclass
+class HeldOut:
+    # A document is judged by a model trained without it and without any copy of it.
+    examples: list[Example]
+    groups: dict[str, frozenset[str]]
+    models: dict[frozenset[str], LogisticClassifier] = field(default_factory=dict)
+
+    def model_for(self, relative: str) -> LogisticClassifier:
+        key = self.groups.get(relative, frozenset([relative]))
+        if key not in self.models:
+            kept = [e for e in self.examples if not key & set(e.group.split("+"))]
+            self.models[key] = train(kept)
+        return self.models[key]
+
+
+def run_mode(
+    mode: str, doc: ParsedDoc, ask_llm: AskLlm, learned: LogisticClassifier
+) -> Classification:
     if mode == "rules":
         return classify(doc)
-    if mode == "cascade" or template_label(doc):
+    if mode == "lr":
+        return classify(doc, first=learned)
+    if mode == "cascade":
         return classify(doc, ask_llm)
-    verdict = ask_llm(llm_prompt(doc))
-    return Classification(
-        label=verdict.label, confidence=verdict.confidence, method="llm", evidence=[verdict.reason]
-    )
+    if mode == "lr_cascade":
+        return classify(doc, ask_llm, learned)
+    if template_label(doc):
+        return classify(doc)
+    return LlmClassifier(ask_llm).classify(doc)
 
 
 def evaluate(corpus: Path, ask_llm: AskLlm) -> list[dict[str, Any]]:
     rows = []
+    held_out = HeldOut(labelled_examples(corpus, ("brownfield", "hard")), source_groups(corpus))
     for relative, (group, truth) in truth_labels(corpus).items():
         doc, _ = redact_doc(parse_file(corpus / relative))
+        learned = held_out.model_for(relative)
         for mode in MODES:
             started = time.perf_counter()
-            result = run_mode(mode, doc, ask_llm)
+            result = run_mode(mode, doc, ask_llm, learned)
             rows.append(
                 {
                     "file": relative,
@@ -77,7 +113,7 @@ def summary(rows: list[dict[str, Any]]) -> list[str]:
     for row in rows:
         groups[(row["group"], row["mode"])].append(row)
     lines = [
-        f"{'group':<11} {'mode':<8} {'docs':>4} {'correct':>8} {'review':>7} "
+        f"{'group':<11} {'mode':<10} {'docs':>4} {'correct':>8} {'review':>7} "
         f"{'confident wrong':>16} {'llm used':>9}"
     ]
     for (group, mode), items in sorted(groups.items()):
@@ -86,7 +122,7 @@ def summary(rows: list[dict[str, Any]]) -> list[str]:
         wrong = sum(not r["correct"] and not r["needs_review"] for r in items)
         llm = sum(r["method"] == "llm" for r in items)
         lines.append(
-            f"{group:<11} {mode:<8} {len(items):>4} {correct:>8} {review:>7} {wrong:>16} {llm:>9}"
+            f"{group:<11} {mode:<10} {len(items):>4} {correct:>8} {review:>7} {wrong:>16} {llm:>9}"
         )
     return lines
 

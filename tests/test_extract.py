@@ -3,13 +3,13 @@ from pathlib import Path
 import pytest
 
 from rootline.catalog import load_catalog
+from rootline.core.models import ParsedDoc, RcaRecord, SopRecord, SopStep
 from rootline.corpus.layout import load_document
 from rootline.ingest.extract import AskRecord, Record, extract
 from rootline.ingest.facts import extract_facts
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
 from rootline.llm.structured import LLMUnavailable
-from rootline.models import ParsedDoc, RcaRecord, SopRecord, SopStep
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 GREENFIELD_SOURCES = sorted((CORPUS / "sources" / "greenfield").glob("*.yaml"))
