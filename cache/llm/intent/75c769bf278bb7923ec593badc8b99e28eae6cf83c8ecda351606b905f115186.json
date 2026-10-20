@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message 'ok run 2' is too vague and lacks context to determine what specific documents, steps, or incident details the engineer is looking for."
+}

@@ -32,7 +32,7 @@ PASSAGES_BY_WORDS = """
     from chunks c join documents d on d.doc_id = c.doc_id
     where c.doc_type = %(t)s and c.doc_id = any(%(ids)s) and c.section <> 'card'
         and c.tsv @@ websearch_to_tsquery('english', %(q)s)
-    order by ts_rank(c.tsv, websearch_to_tsquery('english', %(q)s)) desc
+    order by ts_rank(c.tsv, websearch_to_tsquery('english', %(q)s)) desc, c.chunk_id
     limit %(n)s
 """
 

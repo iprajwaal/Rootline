@@ -24,7 +24,6 @@ case "${1:-}" in
     # Redis stops listening where the service expects it and drops every client. They get
     # "Connection refused" until a restart brings it back on its normal port.
     k exec statefulset/cache -- sh -c 'printf "CONFIG SET port 6380\nCLIENT KILL TYPE normal\n" | redis-cli'
-
     ;;
   queue_consumer_lag)
     # A flash sale: four times the shoppers, each ordering faster. One worker cannot keep up,
@@ -36,8 +35,14 @@ case "${1:-}" in
     # A deploy that loses the payment gateway URL: the new pod exits at start, again and again.
     k set env deploy/orders-api PAYMENT_GATEWAY_URL=
     ;;
+  db_read_only)
+    # Maintenance froze writes and nobody turned them back on. Reads still work, so the
+    # database looks up; every new order fails with ReadOnlySqlTransaction.
+    k exec statefulset/orders-db -- psql -U shop -d orders \
+      -c "alter system set default_transaction_read_only = on" -c "select pg_reload_conf()"
+    ;;
   *)
-    echo "usage: cluster/chaos.sh db_pool_exhausted|disk_full|cache_down|queue_consumer_lag|bad_config_deploy" >&2
+    echo "usage: cluster/chaos.sh db_pool_exhausted|disk_full|cache_down|queue_consumer_lag|bad_config_deploy|db_read_only" >&2
     exit 2
     ;;
 esac

@@ -1,0 +1,61 @@
+{
+  "topic": "DB",
+  "sop_title": "Fixing Read-Only Database Transactions",
+  "purpose": "To restore database write capability when transactions fail due to a read-only transaction state.",
+  "when_to_use": "Use this procedure when the OrdersDbWritesFailing alert fires with a ReadOnlySqlTransaction error.",
+  "alert": "OrdersDbWritesFailing",
+  "prerequisites": [
+    "Access to execute psql commands against orders-db"
+  ],
+  "steps": [
+    {
+      "instruction": "Check if the database is in read-only mode.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "on"
+    },
+    {
+      "instruction": "Allow writes on the database.",
+      "command": "psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\"",
+      "expect": "ALTER SYSTEM and NOTICE or similar confirmation"
+    },
+    {
+      "instruction": "Confirm the database is no longer in read-only mode.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "off"
+    }
+  ],
+  "verification": [
+    "Database health is ok again",
+    "show default_transaction_read_only returns off"
+  ],
+  "rollback": [
+    {
+      "instruction": "This change cannot be undone directly without re-applying the read-only state, which is not recommended during an incident.",
+      "command": "",
+      "expect": ""
+    }
+  ],
+  "sop_change": "Created a new SOP for fixing read-only database transactions.",
+  "rca_title": "RCA: OrdersDbWritesFailing due to Read-Only Transaction State",
+  "short_description": "Database rejects INSERT statements because it entered a read-only transaction state.",
+  "problem_statement": "The orders-db service threw psycopg.errors.ReadOnlySqlTransaction errors, preventing any database writes.",
+  "impact": "Database writes were failing for the orders-db service.",
+  "trigger": "OrdersDbWritesFailing alert fired on orders-db.",
+  "immediate_resolution": "Reset the default transaction read-only setting and reloaded the database configuration.",
+  "root_causes": [
+    "Database default transaction read-only configuration was set to on."
+  ],
+  "timeline": [
+    {
+      "time": "13:15:08 UTC",
+      "event": "OrdersDbWritesFailing alert fired on orders-db due to ReadOnlySqlTransaction."
+    },
+    {
+      "time": "13:15:15 UTC",
+      "event": "Step 2 executed to allow writes on the database and health returned to ok."
+    }
+  ],
+  "action_items": [
+    "Investigate why default_transaction_read_only was enabled."
+  ]
+}

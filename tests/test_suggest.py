@@ -25,6 +25,7 @@ EXPECTED = {
         "Rotate an expired payment-gateway API key",
     ),
     "disk_full": (None, None),
+    "db_read_only": (None, None),
     "bad_config_deploy": ("RCA-2026-007", "SOP-DEPLOY-002"),
     "worker_oom": (
         "orders-worker killed for memory during the month-end batch",
@@ -90,13 +91,35 @@ def test_noisy_log_gives_the_same_top_suggestion_as_the_clean_error(
         assert names(top(clean, lane)) == names(top(dirty, lane))
 
 
-@pytest.mark.parametrize("text", [alert_text("disk_full"), noisy("disk_full")])
+@pytest.mark.parametrize(
+    "text", [alert_text("disk_full"), noisy("disk_full"), alert_text("db_read_only")]
+)
 def test_issue_no_document_covers_says_nothing_relevant(suggester: Suggester, text: str) -> None:
     response = suggester.suggest(text)
 
     assert response.rca.nothing_relevant and response.sop.nothing_relevant
     assert "No past incident matches this issue." in response.message
     assert "No procedure covers this issue." in response.message
+
+
+# Errors close in wording to documented ones, on the same services, that no document has seen.
+NEW_ERRORS = [
+    "orders-api: psycopg.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only"
+    " transaction",
+    "orders-api: redis.exceptions.ResponseError: OOM command not allowed when used memory >"
+    " 'maxmemory'",
+    "orders-worker: psycopg.errors.LockNotAvailable: canceling statement due to lock timeout",
+]
+
+
+@pytest.mark.parametrize("text", NEW_ERRORS)
+def test_named_error_no_document_has_seen_says_nothing_relevant(
+    suggester: Suggester, text: str
+) -> None:
+    response = suggester.suggest(text)
+
+    assert response.issue.errors
+    assert response.rca.nothing_relevant and response.sop.nothing_relevant
 
 
 def test_message_names_an_alert_no_document_lists(suggester: Suggester) -> None:

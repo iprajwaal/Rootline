@@ -205,6 +205,7 @@ class Presenter:
         planned: bool,
         failing: list[str] | None,
         found: list[str],
+        uncovered: bool = False,
     ) -> str:
         parts = []
         if claims:
@@ -223,7 +224,7 @@ class Presenter:
             parts.append(f"Still failing: {escape(', '.join(failing))}.")
         else:
             parts.append("Health is ok now.")
-        searched = any(run.tool == "search_docs" for run in done)
+        searched = uncovered or any(run.tool == "search_docs" for run in done)
         if found:
             cards = "\n".join(f"- {self.cited(doc_id)}" for doc_id in found)
             parts.append(f"**Documents I checked**\n{cards}")
@@ -269,13 +270,20 @@ class Presenter:
             cites.append(f"\\[{n}\\]" if doc_id == "CHECK" else f"[\\[{n}\\]]({self.link(doc_id)})")
         return "".join(cites)
 
+    def offer(self, sop: str | None) -> str:
+        what = f"a new version of {self.cited(sop)} and a new RCA" if sop else "a new SOP and RCA"
+        return (
+            f"Should I write this incident up as {what}? A person reviews them before anything"
+            " is searchable. Answer yes or no."
+        )
+
     def drafted(self, drafted: Drafted) -> str:
         sop_note = f"update to v{drafted.sop_version}" if drafted.sop_version > 1 else "new"
         built = [f"built on {self.cited(drafted.based_on)}"] if drafted.based_on else []
         built += [f"related to {self.cited(doc_id)}" for doc_id in drafted.related]
         parts = [
-            "Health is ok now, so I wrote up the incident from this chat. Nothing is searchable"
-            " until a person approves it."
+            "I wrote up the incident from this chat. Nothing is searchable until a person"
+            " approves it."
             + (" It replaces the drafts written earlier in this chat." if drafted.replaced else ""),
             f"- {escape(BADGE['sop'])} {drafted.sop_id} ({sop_note}) {escape(drafted.sop_title)}\n"
             f"- {escape(BADGE['rca'])} {drafted.rca_id} (new) {escape(drafted.rca_title)}",

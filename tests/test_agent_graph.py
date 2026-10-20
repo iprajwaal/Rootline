@@ -291,6 +291,16 @@ def test_an_approved_fix_runs_and_its_output_and_health_are_shown(
     assert shop.actions() == ["POST /admin/actions/raise_pool_limit"]
 
 
+def test_a_fix_that_brings_health_back_offers_the_write_up(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+    chat.say("run step 4")
+
+    text = reply(chat.resume({"type": "approve"}))
+
+    assert "Should I write this incident up as a new version of [\\[SOP\\] SOP-DB-001]" in text
+    assert reply(chat.say("no")).startswith("OK, nothing is written up.")
+
+
 def test_a_rejected_fix_is_not_run_and_the_command_is_shown(chat: Chat, shop: FakeShop) -> None:
     chat.say("steps for db pool")
     chat.say("run step 4")

@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The error is OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "Disk usage shows /var/lib/shoplite 41% used.",
+      "sources": [
+        2
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check the disk usage to confirm the available space.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "Output showing the disk usage of /var/lib/shoplite."
+    }
+  ]
+}

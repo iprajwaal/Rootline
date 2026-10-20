@@ -16,6 +16,8 @@ ERROR_PATTERNS = [
     re.compile(
         r"\b(?:[a-z_]\w*\.)*[A-Z][A-Za-z]*(?:Error|Exception|Timeout)\b(?::[^\n\"]{1,100})?"
     ),
+    # Library errors that do not end in Error, such as psycopg.errors.ReadOnlySqlTransaction.
+    re.compile(r"\b(?:[a-z_]\w*\.)+(?:errors|exceptions)\.[A-Z]\w+\b(?::[^\n\"]{1,100})?"),
     re.compile(
         r"\b(?:OOMKilled|CrashLoopBackOff|ImagePullBackOff|Evicted)\b(?: \(exit code \d+\))?"
     ),

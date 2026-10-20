@@ -133,6 +133,9 @@ class Suggester:
         # When some documents share the alert or the error, the ones sharing only words are noise.
         if any(shared.alerts or shared.errors for shared, _ in ranked):
             ranked = [(shared, s) for shared, s in ranked if shared.alerts or shared.errors]
+        elif issue.errors:
+            # A named error no document has seen is a new problem, however close the wording.
+            return SuggestionLane(suggestions=[], nothing_relevant=True)
         ranked.sort(key=lambda pair: (pair[1].status == "superseded", -pair[1].score))
         ranked = ranked[:PER_LANE]
         # A superseded document next to its replacement is not a second answer.

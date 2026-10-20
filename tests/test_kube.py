@@ -115,3 +115,25 @@ def test_health_check_returns_the_live_health_and_logs_keep_the_newest_lines(
     assert json.loads(kube.check("health"))["status"] == "ok"
     logs = kube.check("logs").splitlines()
     assert logs[0] == "... 60 earlier lines" and logs[-1] == "line 99"
+
+
+@pytest.mark.parametrize(("setting", "met"), [("on", True), ("off", None)])
+def test_a_fix_run_inside_a_pod_is_previewed_with_its_check(
+    monkeypatch: pytest.MonkeyPatch, setting: str, met: bool | None
+) -> None:
+    fake = FakeKubectl({"show default_transaction_read_only": (0, f"{setting}\n")})
+
+    tried = shop(fake, monkeypatch, "degraded").trial("allow_db_writes")
+
+    assert tried.met is met and tried.output == setting
+    assert all("--context reader" in " ".join(argv) for argv in fake.ran)
+    assert not any("alter system" in " ".join(argv) for argv in fake.ran)
+
+
+def test_a_fix_run_inside_a_pod_waits_for_no_rollout(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeKubectl()
+
+    done = shop(fake, monkeypatch).act("allow_db_writes")
+
+    assert done.met is True
+    assert len(fake.ran) == 1 and "--context fixer" in " ".join(fake.ran[0])

@@ -13,7 +13,7 @@ from psycopg.types.json import Jsonb
 from test_agent_graph import Chat, make_graph, reply
 
 from rootline.agent.answer import Claim
-from rootline.agent.drafts import Drafter, DraftLlm, StepDraft, transcript
+from rootline.agent.drafts import Drafter, DraftLlm, StepDraft, draft_prompt, transcript
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.state import Step
 from rootline.agent.troubleshoot import AskConclusion, StepLlm
@@ -238,15 +238,18 @@ def test_scenario_three_then_four_the_new_sop_is_found(
     shop.broken = False
     before = newest_review(conn)
 
-    text = reply(
+    asked = reply(
         chat.say(
             f"Fixed it. I ran `{catalog.checks['disk_usage']}`"
             f" and then `{catalog.actions['clear_tmp']}`."
         )
     )
+    assert "Should I write this incident up as a new SOP and RCA?" in asked
+    assert drafted_since(conn, before) == []
+    text = reply(chat.say("yes"))
     queued = drafted_since(conn, before)
 
-    assert text.startswith("Health is ok now, so I wrote up the incident from this chat.")
+    assert text.startswith("I wrote up the incident from this chat.")
     assert "Left out commands that never appeared in this chat: `rm -rf /`" in text
     sop = next(d for d in queued if d.doc_type == "sop")
     assert sop.doc_id.startswith("SOP-DISK-") and f"{sop.doc_id} (new)" in text
@@ -292,11 +295,13 @@ def test_scenario_three_then_four_from_the_agents_steps(
     shop.broken = False
     before = newest_review(conn)
 
-    done = reply(chat.say("done"))
+    asked = reply(chat.say("done"))
+    done = reply(chat.say("yes please"))
     sop = next(d for d in drafted_since(conn, before) if d.doc_type == "sop")
 
     assert "**Steps to follow**" in advised and "REF-" in advised and shop.actions() == []
-    assert done.startswith("Health is ok now, so I wrote up the incident from this chat.")
+    assert asked.startswith("Health is ok now. Should I write")
+    assert done.startswith("I wrote up the incident from this chat.")
     assert catalog.actions["clear_tmp"] in sop.markdown
     assert catalog.checks["disk_usage"] in sop.markdown
     for draft in drafted_since(conn, before):
@@ -326,9 +331,11 @@ def test_following_an_existing_sop_writes_its_next_version_and_a_new_rca(
     shop.broken = False
     before = newest_review(conn)
 
-    text = reply(chat.say("done, it works now"))
+    asked = reply(chat.say("done, it works now"))
+    text = reply(chat.say("yes"))
     sop, rca = sorted(drafted_since(conn, before), key=lambda d: d.doc_type, reverse=True)
 
+    assert "a new version of [\\[SOP\\] SOP-DB-001]" in asked
     assert "The engineer followed the existing SOP below." in prompts[0]
     assert "SOP-DB-001 (update to v2)" in text and f"{rca.doc_id} (new)" in text
     assert sop.doc_id == "SOP-DB-001" and "kubectl access to the shop namespace" in sop.markdown
@@ -342,6 +349,27 @@ def test_following_an_existing_sop_writes_its_next_version_and_a_new_rca(
     source = CORPUS / "greenfield" / "sop-db-001.docx"
     again = reviewer.ingest(f"corpus/greenfield/{source.name}", source.read_bytes())
     assert again.action == "unchanged" and conn.execute(version).fetchone() == (2,)
+
+
+def test_saying_no_to_the_write_up_drafts_nothing(
+    analyzer: Analyzer,
+    learning_url: str,
+    offline_settings: Settings,
+    conn: psycopg.Connection,
+) -> None:
+    shop = disk_shop()
+    chat = chat_for(analyzer, learning_url, offline_settings, shop)
+    chat.say(DISK_ERROR)
+    shop.broken = False
+    before = newest_review(conn)
+    chat.say("done")
+
+    declined = reply(chat.say("no thanks"))
+    later = reply(chat.say("yes"))
+
+    assert declined.startswith("OK, nothing is written up.")
+    assert "I wrote up" not in later
+    assert drafted_since(conn, before) == []
 
 
 def test_approving_twice_ingests_once_and_rejecting_never_indexes(
@@ -425,3 +453,12 @@ def test_drafted_ids_follow_on_from_documents_and_waiting_drafts(
     )
 
     assert (first, drafter.next_id(conn, "SOP-QUOTA-")) == ("SOP-QUOTA-001", "SOP-QUOTA-005")
+
+
+def test_a_new_sop_is_offered_the_topics_already_in_use(
+    analyzer: Analyzer, learning_url: str
+) -> None:
+    areas = Drafter(learning_url, analyzer.catalog).areas()
+
+    assert {"DB", "CACHE", "QUEUE"} <= set(areas) and "B" not in areas
+    assert "Topics already used in SOP IDs: CACHE, DB" in draft_prompt("chat", [], [], None, areas)

@@ -23,7 +23,18 @@ IN_CLUSTER = {
     "queue_lag": [
         "exec", "statefulset/order-queue", "--", "rpk", "group", "describe", "orders-worker",
     ],
+    "db_read_only": [
+        "exec", "statefulset/orders-db", "--", "psql", "-U", "shop", "-d", "orders", "-tA",
+        "-c", "show default_transaction_read_only",
+    ],
+    "allow_db_writes": [
+        "exec", "statefulset/orders-db", "--", "psql", "-U", "shop", "-d", "orders",
+        "-c", "alter system reset default_transaction_read_only", "-c", "select pg_reload_conf()",
+    ],
 }  # fmt: skip
+# kubectl exec has no dry run. Such a fix is previewed with the check that shows what it
+# changes, and the output that means it has something to change.
+PREVIEW = {"allow_db_writes": ("db_read_only", "on")}
 WORKLOAD = re.compile(r"^(?:deploy|deployment|statefulset|sts)/[\w-]+$")
 # Logs are long; the reply shows the newest lines, where the trouble is.
 LOG_LINES = 40
@@ -75,6 +86,14 @@ class KubeShop:
 
     def trial(self, name: str) -> StepResult:
         line = self.catalog.actions[name]
+        if name in PREVIEW:
+            check, applies = PREVIEW[name]
+            shown = self.check(check)
+            if shown.strip() != applies:
+                note = f"a preview with {check} shows nothing for it to change"
+                return result(name, shown, None, note, "cluster")
+            note = f"a preview with {check} shows what it changes, nothing changed yet"
+            return result(name, shown, True, note, "cluster")
         if "-delete" in line.split():
             # find without -delete lists exactly what the real command would remove, and
             # only needs to read.
@@ -99,8 +118,8 @@ class KubeShop:
         if done.returncode:
             return result(name, "\n".join(lines), False, "the command failed", "ran")
         # A changed deployment or statefulset rolls out new pods; health means something only
-        # once that has finished.
-        workload = next((a for a in argv if WORKLOAD.match(a)), None)
+        # once that has finished. A command run inside a pod changes no workload.
+        workload = None if "exec" in argv else next((a for a in argv if WORKLOAD.match(a)), None)
         if workload:
             status = ["kubectl", *self.namespaced(argv), "rollout", "status", workload]
             rolled = self.kubectl([*status, "--timeout=180s"])

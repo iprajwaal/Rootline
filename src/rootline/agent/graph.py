@@ -55,9 +55,12 @@ ROUTES = (
     "ask_rca",
     "run_step",
     "draft",
+    "decline",
     "troubleshoot",
     "recheck",
 )
+# A step's reply, what it did in short, and what it ran if anything.
+Performed = tuple[str, str, StepResult | None]
 SHOWN_CHARS = 120
 NOTE_CHARS = 300
 
@@ -116,7 +119,7 @@ def build_graph(
         started = time.perf_counter()
         text = question(state)
         with request_scope(state["request_id"]):
-            found = understander.understand(text)
+            found = understander.understand(text, state.get("focus", Focus()).offered)
         step = Step(
             request_id=state["request_id"],
             node="understand",
@@ -246,16 +249,18 @@ def build_graph(
                 "failing": merged(focus.failing, failing),
             }
         )
+        # Handed over by suggest, which found nothing relevant in the library.
+        uncovered = state["understanding"].intent == "suggest"
         text = presenter.investigation(
-            done, claims, cited, given, bool(focus.plan), failing, documents(done)
+            done, claims, cited, given, bool(focus.plan), failing, documents(done), uncovered
         )
         detail = f"{len(claims)} cited sentences · {len(given)} steps · health {health(failing)}"
         step = agent_step(state, "conclude", {"tool_calls": len(done)}, detail, started, llm_calls)
         if failing == [] and was_failing:
-            written_up, wrote, focus = write_up(state, focus)
-            return answer(state, f"{text}\n\n{written_up}", step, wrote) | {
+            offered = focus.model_copy(update={"offered": True})
+            return answer(state, f"{text}\n\n{presenter.offer(focus.sop)}", step) | {
                 "work": [],
-                "focus": focus,
+                "focus": offered,
             }
         return answer(state, text, step) | {"work": [], "focus": focus}
 
@@ -271,8 +276,10 @@ def build_graph(
             return {"messages": step_messages(step), "trace": [step], "focus": update}
         if not (focus.issue or focus.failing):
             return answer(state, "Health is ok and nothing is failing.", step)
-        text, wrote, focus = write_up(state, focus)
-        return answer(state, text, step, wrote) | {"focus": focus}
+        # The engineer decides whether this incident becomes documents.
+        offered = focus.model_copy(update={"offered": True})
+        text = f"Health is ok now. {presenter.offer(focus.sop)}"
+        return answer(state, text, step) | {"focus": offered}
 
     def fallback(state: AgentState, *before: Step) -> dict[str, Any]:
         # The model is not available: read-only checks and public pages, and no AI text.
@@ -363,10 +370,10 @@ def build_graph(
         section: Section = "rollback" if found.rollback else "steps"
         ordinal = found.step or 0
         if focus.plan and not focus.sop:
-            text, detail = plan_step(focus.plan, ordinal)
+            text, detail, result = plan_step(focus.plan, ordinal)
             args: dict[str, str | int | float] = {"plan": "investigation", "step": ordinal}
         else:
-            text, detail = sop_step(focus, section, ordinal, found.rollback)
+            text, detail, result = sop_step(focus, section, ordinal, found.rollback)
             args = {"sop": focus.sop or "none", "section": section, "step": ordinal}
         step = Step(
             request_id=state["request_id"],
@@ -375,49 +382,57 @@ def build_graph(
             detail=detail,
             ms=elapsed_ms(started),
         )
+        if result and result.mode == "ran" and result.met:
+            # The approved fix brought health back, so the write-up is offered now.
+            offered = focus.model_copy(update={"offered": True})
+            return answer(state, f"{text}\n\n{presenter.offer(focus.sop)}", step) | {
+                "focus": offered
+            }
         return answer(state, text, step)
 
-    def plan_step(plan: list[PlanStep], ordinal: int) -> tuple[str, str]:
+    def plan_step(plan: list[PlanStep], ordinal: int) -> Performed:
         given = next((step for step in plan if step.ordinal == ordinal), None)
         if given is None:
-            return f"The steps I gave have no step {ordinal}.", "no such step"
+            return f"The steps I gave have no step {ordinal}.", "no such step", None
         known = {line: name for name, line in (catalog.checks | catalog.actions).items()}
         return perform(f"Step {ordinal}", given, known.get(given.command))
 
-    def sop_step(focus: Focus, section: Section, ordinal: int, rollback: bool) -> tuple[str, str]:
+    def sop_step(focus: Focus, section: Section, ordinal: int, rollback: bool) -> Performed:
         if not focus.sop or not focus.sop_version:
-            return "Open an SOP first, for example: steps for db pool.", "no SOP in focus"
+            return "Open an SOP first, for example: steps for db pool.", "no SOP in focus", None
         stored = executor.step(focus.sop, focus.sop_version, section, ordinal)
         kind = "rollback step" if rollback else "step"
         if stored is None:
-            return f"{focus.sop} v{focus.sop_version} has no {kind} {ordinal}.", "no such step"
+            text = f"{focus.sop} v{focus.sop_version} has no {kind} {ordinal}."
+            return text, "no such step", None
         if not (stored.action or stored.check_name):
-            return presenter.run_yourself(stored, "it has no sandbox check"), "manual step"
+            text = presenter.run_yourself(stored, "it has no sandbox check")
+            return text, "manual step", None
         title = f"{kind.capitalize()} {ordinal} of {focus.sop} v{focus.sop_version}"
         cited = f"{focus.sop} v{focus.sop_version}"
         # The stored step decides what runs, never the text of the chat.
         return perform(title, as_plan_step(stored, cited), stored.action or stored.check_name)
 
-    def perform(title: str, step: PlanStep, name: str | None) -> tuple[str, str]:
+    def perform(title: str, step: PlanStep, name: str | None) -> Performed:
         if name is None:
-            return presenter.tried(title, step, None), "manual step"
+            return presenter.tried(title, step, None), "manual step", None
         try:
             if name in catalog.checks:
                 checked = executor.check(name)
-                return presenter.tried(title, step, checked), outcome(checked)
+                return presenter.tried(title, step, checked), outcome(checked), checked
             trial = executor.dry_run(name)
             if trial.met is None:
-                return presenter.tried(title, step, trial), outcome(trial)
+                return presenter.tried(title, step, trial), outcome(trial), trial
             # Pauses the run until the engineer approves or rejects it in the chat UI.
             ok, message = approved(interrupt(fix_request(name, step, trial)))
             if not ok:
                 reason = f"rejected: {message}" if message else "rejected"
-                return presenter.not_run(title, step, reason), "rejected"
+                return presenter.not_run(title, step, reason), "rejected", None
             result = executor.act(name)
         except SandboxUnavailable as error:
             log.warning("step not run error=%s", error)
-            return presenter.tried(title, step, None), "sandbox down"
-        return presenter.ran(title, step, trial, result), outcome(result)
+            return presenter.tried(title, step, None), "sandbox down", None
+        return presenter.ran(title, step, trial, result), outcome(result), result
 
     def try_on_copy(name: str) -> StepResult | None:
         try:
@@ -438,7 +453,13 @@ def build_graph(
             step = agent_step(state, "draft", {}, "not healthy yet", started)
             return answer(state, text, step)
         text, wrote, focus = write_up(state, state.get("focus", Focus()))
-        return answer(state, text, wrote) | {"focus": focus}
+        return answer(state, text, wrote) | {"focus": focus.model_copy(update={"offered": False})}
+
+    def decline(state: AgentState) -> dict[str, Any]:
+        focus = state.get("focus", Focus()).model_copy(update={"offered": False})
+        step = agent_step(state, "decline", {}, "no write-up", time.perf_counter())
+        text = 'OK, nothing is written up. Say "draft the SOP and RCA" if you change your mind.'
+        return answer(state, text, step) | {"focus": focus}
 
     def write_up(state: AgentState, focus: Focus) -> tuple[str, Step, Focus]:
         # The incident's memory becomes an SOP (a new version of the one followed, or a new
@@ -451,7 +472,8 @@ def build_graph(
         llm_calls = 0
         try:
             with request_scope(state["request_id"]):
-                written = writers.draft(draft_prompt(chat, services, alerts, followed))
+                prompt = draft_prompt(chat, services, alerts, followed, drafter.areas())
+                written = writers.draft(prompt)
             trace = state.get("trace", [])
             context = WriteUp(
                 services,
@@ -497,6 +519,7 @@ def build_graph(
         "ask_rca": ask_rca,
         "run_step": run_step,
         "draft": draft,
+        "decline": decline,
         "recheck": recheck,
         "troubleshoot": troubleshoot,
         "think": think,
@@ -517,7 +540,7 @@ def build_graph(
     for name in ("troubleshoot", "think"):
         builder.add_conditional_edges(name, after_think, ["tools", "conclude", "record"])
     builder.add_edge("tools", "think")
-    for name in ("find", "ask_sop", "ask_rca", "run_step", "draft", "conclude", "reply"):
+    for name in ("find", "ask_sop", "ask_rca", "run_step", "draft", "decline", "conclude", "reply"):
         builder.add_edge(name, "record")
     builder.add_edge("record", END)
     # With Langfuse keys set, every node run and the LLM calls inside it land in one trace.

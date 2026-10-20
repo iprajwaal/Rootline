@@ -22,6 +22,7 @@ Intent = Literal[
     "unclear",
     "run_step",
     "draft",
+    "decline",
     "recheck",
 ]
 Lane = Literal["rca", "sop", "both"]
@@ -95,6 +96,9 @@ TROUBLESHOOT = re.compile(
     r"|\bwhat (?:do|should|can) (?:i|we) (?:run|do|try) now\b"
     r"|\bhelp (?:me |us )?(?:fix|solve|resolve|debug)\b"
 )
+# A short yes or no, read only as the answer to "Should I write this up?".
+YES = re.compile(r"(?i)^\W*(?:yes|yeah|yep|sure|ok|okay|please|go ahead|do it)\b[\w\s,.!']{0,40}$")
+NO = re.compile(r"(?i)^\W*(?:no|nope|nah|not now|not yet|skip|don't|do not)\b[\w\s,.!']{0,40}$")
 RUN_STEP = re.compile(
     r"(?i)\b(?:run|execute|apply|do)\s+(?:the\s+)?(rollback\s+)?step\s*#?\s*(\d+)\b"
 )
@@ -152,8 +156,13 @@ class Understander:
     catalog: Catalog
     ask_intent: AskIntent | None
 
-    def understand(self, text: str) -> Understanding:
+    def understand(self, text: str, offered: bool = False) -> Understanding:
         signals = read_signals(text, self.catalog)
+        if offered and (agreed := consent(text)) is not None:
+            answer = Guess("draft", 0.95, "agrees to the write-up")
+            if not agreed:
+                answer = Guess("decline", 0.95, "declines the write-up")
+            return understanding(answer, signals, "rules")
         guess = rule_guess(signals)
         if guess.confidence >= SURE:
             return understanding(guess, signals, "rules")
@@ -197,6 +206,12 @@ def read_signals(text: str, catalog: Catalog) -> Signals:
         troubleshoot=bool(TROUBLESHOOT.search(text)),
         recheck=bool(RECHECK.search(text)),
     )
+
+
+def consent(text: str) -> bool | None:
+    if NO.match(text):
+        return False
+    return True if YES.match(text) else None
 
 
 def searchable(signals: Signals) -> bool:

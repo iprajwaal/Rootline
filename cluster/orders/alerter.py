@@ -31,6 +31,7 @@ class Rule:
 # Names match corpus/catalog.yaml, so Rootline links each alert to its documents.
 RULES = {
     "db": Rule("OrdersDbPoolExhausted", "orders-api", "critical", "PoolTimeout"),
+    "db_writes": Rule("OrdersDbWritesFailing", "orders-db", "critical", "ReadOnlySqlTransaction"),
     "disk": Rule("OrdersApiDiskFull", "orders-api", "critical", "No space left on device"),
     "cache": Rule("OrdersApiHighLatency", "cache", "critical", "redis.exceptions"),
     "crashloop": Rule("OrdersApiCrashLooping", "orders-api", "critical", "config error"),
@@ -78,7 +79,8 @@ class Alerter:
         found = set()
         try:
             health = self.shop.get("/health", timeout=10).json()
-            found |= {part for part, state in health["components"].items() if state != "ok"}
+            # "unknown" means another check already reports the cause.
+            found |= {part for part, state in health["components"].items() if state == "failing"}
         except (httpx.HTTPError, ValueError):
             # Unreachable alone is often a rollout; the pod status says if it is a crash loop.
             pass

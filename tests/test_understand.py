@@ -195,3 +195,19 @@ def test_asking_for_hands_on_help_goes_to_the_agent(catalog: Catalog, text: str)
 
 def test_how_to_fix_a_named_thing_still_reads_the_sop(catalog: Catalog) -> None:
     assert Understander(catalog, never).understand("how do I fix the db pool").intent == "ask_sop"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent"),
+    [("yes", "draft"), ("Yes please, go ahead", "draft"), ("no thanks", "decline")],
+)
+def test_a_short_answer_to_the_write_up_offer_needs_no_llm(
+    catalog: Catalog, text: str, intent: str
+) -> None:
+    found = Understander(catalog, never).understand(text, offered=True)
+
+    assert (found.intent, found.method) == (intent, "rules")
+
+
+def test_yes_means_nothing_when_no_write_up_was_offered(catalog: Catalog) -> None:
+    assert Understander(catalog, None).understand("yes").intent == "unclear"

@@ -1,0 +1,14 @@
+name: Database left read-only, from an alert no document covers
+proves: the agent investigates a new error, the engineer says yes to the write-up, then approves
+fault: db_read_only
+entry: alert
+forget_learned: true
+steps:
+  - expect: {contains: ["Steps to follow", "default_transaction_read_only"], absent: ["SOP-DB-001"]}
+  - act: allow_db_writes
+  - say: done
+    expect: {contains: ["Health is ok now", "a new SOP and RCA"], llm_calls_max: 0}
+  - say: "yes"
+    expect: {contains: ["(new)", "/review"], llm_calls_max: 1}
+review: approve
+health_after: ok

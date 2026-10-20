@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 import anyio
+import psycopg
 import redis
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewPartitions, NewTopic
@@ -70,7 +71,10 @@ def ready() -> dict[str, str]:
 @app.get("/health")
 async def health() -> JSONResponse:
     # Own threads for the checks, so a jammed request pool cannot stop health from answering.
-    checks = {"db": db_ok, "cache": cache_ok, "queue": queue_ok, "disk": disk_ok}
+    checks = {
+        "db": db_ok, "db_writes": db_writes_ok, "cache": cache_ok, "queue": queue_ok,
+        "disk": disk_ok,
+    }  # fmt: skip
     parts = {
         name: await anyio.to_thread.run_sync(check, limiter=HEALTH_THREADS)
         for name, check in checks.items()
@@ -90,6 +94,9 @@ def create_order(item: str = "book") -> dict[str, Any]:
     except PoolTimeout as error:
         log.error("psycopg_pool.PoolTimeout: %s", error)
         raise HTTPException(503, "database busy") from error
+    except psycopg.Error as error:
+        log.error("%s.%s: %s", type(error).__module__, type(error).__name__, error)
+        raise HTTPException(503, "database error") from error
     try:
         cache.set(f"order:{order_id}", item, ex=600)
     except redis.exceptions.ConnectionError as error:
@@ -103,6 +110,9 @@ def create_order(item: str = "book") -> dict[str, Any]:
         raise HTTPException(500, "could not write the receipt") from error
     queue.produce("orders", key=order_id, value=item)
     queue.poll(0)
+    # The mailer builds the receipt again from the order, so this copy is scratch. Kept, it
+    # would fill the volume within hours.
+    receipt.unlink(missing_ok=True)
     return {"id": order_id, "status": "new"}
 
 
@@ -157,6 +167,18 @@ def db_ok() -> str:
     except Exception as error:
         log.error("database check failed: %s", error)
         return "failing"
+
+
+def db_writes_ok() -> str:
+    # A database can answer reads and still refuse every write, as when maintenance left it
+    # read-only.
+    try:
+        with pool.connection(timeout=2) as conn:
+            row = conn.execute("show transaction_read_only").fetchone()
+    except Exception:
+        # A database that cannot be reached at all is the db check's finding.
+        return "unknown"
+    return "ok" if row and row[0] == "off" else "failing"
 
 
 def cache_ok() -> str:
