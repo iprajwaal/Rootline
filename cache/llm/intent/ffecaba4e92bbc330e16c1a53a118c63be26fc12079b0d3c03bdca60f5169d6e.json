@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.95,
+  "reason": "The user provided a specific document ID (RCA-B-8BF782) to locate or reference a past incident write-up without asking a question."
+}

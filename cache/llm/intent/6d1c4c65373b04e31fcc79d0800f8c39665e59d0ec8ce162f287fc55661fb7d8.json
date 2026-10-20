@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.8,
+  "reason": "The user provided a service and action name ('orders-api deploy') which looks like a query to locate relevant documents or SOPs related to that service's deployment, without describing a live problem or asking a specific troubleshooting question."
+}

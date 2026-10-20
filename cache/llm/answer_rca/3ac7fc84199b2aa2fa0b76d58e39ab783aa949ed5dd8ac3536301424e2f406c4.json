@@ -1,0 +1,10 @@
+{
+  "claims": [
+    {
+      "text": "A new sales report endpoint held connections while it ran slow queries.",
+      "sources": [
+        5
+      ]
+    }
+  ]
+}

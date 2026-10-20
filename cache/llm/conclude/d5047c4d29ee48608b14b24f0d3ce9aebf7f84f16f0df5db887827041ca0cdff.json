@@ -1,0 +1,33 @@
+{
+  "claims": [
+    {
+      "text": "The database read-only check shows on.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The error psycopg.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction is occurring.",
+      "sources": [
+        3
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check if the database is in read-only mode.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "on"
+    },
+    {
+      "instruction": "Allow writes on the database.",
+      "command": "psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\"",
+      "expect": "ALTER SYSTEM and NOTICE or similar confirmation"
+    },
+    {
+      "instruction": "Confirm the database is no longer in read-only mode.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "off"
+    }
+  ]
+}

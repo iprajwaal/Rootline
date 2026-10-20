@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is describing a specific past or ongoing problem (a deploy dropping a config value causing the API to restart) and is likely looking for related incident write-ups (RCAs) or troubleshooting documentation."
+}

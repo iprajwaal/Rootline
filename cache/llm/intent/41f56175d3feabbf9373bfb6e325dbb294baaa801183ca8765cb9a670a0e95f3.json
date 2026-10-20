@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.95,
+  "reason": "The user is looking for a specific document or runbook related to kafka consumer lag without asking a question or pasting a live error log."
+}

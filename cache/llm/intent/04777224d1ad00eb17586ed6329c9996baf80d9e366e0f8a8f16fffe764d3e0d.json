@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live alert message showing a high consumer group lag, which indicates a current symptom or problem where they would want related documents or incident write-ups."
+}

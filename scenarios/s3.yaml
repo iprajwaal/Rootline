@@ -10,6 +10,8 @@ steps:
     expect: {absent: ["Understood as unclear"]}
   - act: clear_tmp
   - say: done
-    expect: {contains: ["Health is ok now", "SOP-DISK-", "(new)"], llm_calls_max: 1}
+    expect: {contains: ["Health is ok now", "a new SOP and RCA"], llm_calls_max: 0}
+  - say: "yes"
+    expect: {contains: ["SOP-DISK-", "(new)"], llm_calls_max: 1}
 review: approve
 health_after: ok

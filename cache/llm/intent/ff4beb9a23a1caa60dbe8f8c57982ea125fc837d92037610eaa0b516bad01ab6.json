@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem (orders api 503s, db connections maxed out) happening this morning and wants related documents."
+}

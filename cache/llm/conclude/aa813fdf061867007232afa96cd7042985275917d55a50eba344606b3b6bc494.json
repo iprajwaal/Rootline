@@ -1,0 +1,17 @@
+{
+  "claims": [
+    {
+      "text": "Step 2 clears temporary files older than one day to free up disk space.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "It is safe because a dry run on a copy of the system shows it fixes disk_full and health is ok after it.",
+      "sources": [
+        3
+      ]
+    }
+  ],
+  "steps": []
+}

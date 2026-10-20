@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The user is querying for a specific topic or document related to 'payment-gateway api key' without describing a live problem or asking a specific question."
+}

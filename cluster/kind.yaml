@@ -1,0 +1,18 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: shop
+networking:
+  # A fixed port, so Rootline's container can reach the API at host.docker.internal:16443.
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 16443
+kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+      certSANs: [host.docker.internal, localhost, 127.0.0.1]
+nodes:
+  - role: control-plane
+    # orders-api on localhost:30080, so Rootline and a browser can reach the real service.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080

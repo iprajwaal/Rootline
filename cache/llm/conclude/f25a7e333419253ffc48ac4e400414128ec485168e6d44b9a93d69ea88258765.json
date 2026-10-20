@@ -1,0 +1,11 @@
+{
+  "claims": [
+    {
+      "text": "The error message is OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        7
+      ]
+    }
+  ],
+  "steps": []
+}

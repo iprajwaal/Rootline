@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The user provided a short keyword query indicating a search for documents related to orders-worker memory without asking a question or describing a live symptom."
+}

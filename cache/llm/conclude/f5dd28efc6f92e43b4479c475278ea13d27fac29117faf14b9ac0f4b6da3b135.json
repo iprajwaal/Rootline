@@ -1,0 +1,39 @@
+{
+  "claims": [
+    {
+      "text": "The health check shows status degraded and db_writes failing.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The database read-only status check returns on.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The error psycopg.errors.ReadOnlySqlTransaction indicates it cannot execute INSERT in a read-only transaction.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check the database read-only status to confirm the problem.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "on"
+    },
+    {
+      "instruction": "Allow database writes.",
+      "command": "psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\"",
+      "expect": "ALTER SYSTEM and message indicating success or configuration reload"
+    },
+    {
+      "instruction": "Check the database read-only status again to confirm the fix.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "off"
+    }
+  ]
+}

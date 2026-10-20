@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 1.0,
+  "reason": "The user is asking about why a past incident (HR portal SSO failure last week) occurred."
+}

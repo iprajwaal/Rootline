@@ -1,0 +1,66 @@
+{
+  "topic": "DATABASE",
+  "sop_title": "Fix Read-Only Database Transaction Error",
+  "purpose": "To resolve database write failures caused by the database being in a read-only transaction state.",
+  "when_to_use": "Use when OrdersDbWritesFailing alert fires or when INSERT operations fail with psycopg.errors.ReadOnlySqlTransaction.",
+  "alert": "OrdersDbWritesFailing",
+  "prerequisites": [
+    "Access to psql CLI",
+    "Database credentials for shop user"
+  ],
+  "steps": [
+    {
+      "instruction": "Check the database read-only status to confirm the problem.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "on"
+    },
+    {
+      "instruction": "Allow database writes.",
+      "command": "psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\"",
+      "expect": "ALTER SYSTEM and message indicating success or configuration reload"
+    },
+    {
+      "instruction": "Check the database read-only status again to confirm the fix.",
+      "command": "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\"",
+      "expect": "off"
+    }
+  ],
+  "verification": [
+    "curl -s http://orders-api:8080/health returns status ok",
+    "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\" returns off"
+  ],
+  "rollback": [
+    {
+      "instruction": "To set the database back to read-only mode if needed.",
+      "command": "psql -h orders-db -U shop -c \"alter system set default_transaction_read_only = 'on'\" -c \"select pg_reload_conf()\"",
+      "expect": "ALTER SYSTEM"
+    }
+  ],
+  "sop_change": "Created a new SOP since no internal SOP covered this issue.",
+  "rca_title": "OrdersDbWritesFailing due to Read-Only Transaction",
+  "short_description": "Database was stuck in read-only transaction mode causing insert failures.",
+  "problem_statement": "The orders-db went into a read-only transaction mode, causing OrdersDbWritesFailing alerts and preventing INSERT operations.",
+  "impact": "System health was degraded and database writes were failing.",
+  "trigger": "OrdersDbWritesFailing alert triggered by psycopg.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction.",
+  "immediate_resolution": "Ran psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\" after approval.",
+  "root_causes": [
+    "Database default_transaction_read_only configuration was set to on."
+  ],
+  "timeline": [
+    {
+      "time": "13:08:08 UTC",
+      "event": "OrdersDbWritesFailing alert fired with psycopg.errors.ReadOnlySqlTransaction."
+    },
+    {
+      "time": "13:08:34 UTC",
+      "event": "Engineer approved running step 2, executing allow_db_writes action and restoring health."
+    },
+    {
+      "time": "13:08:45 UTC",
+      "event": "Engineer agreed to write up the new SOP and RCA."
+    }
+  ],
+  "action_items": [
+    "Save the new SOP to handle future occurrences of OrdersDbWritesFailing."
+  ]
+}

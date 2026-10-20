@@ -6,7 +6,7 @@ from rootline.catalog import load_catalog
 from rootline.core.models import ParsedDoc, RcaRecord, SopRecord, SopStep
 from rootline.corpus.layout import load_document
 from rootline.ingest.extract import AskRecord, Record, extract
-from rootline.ingest.facts import extract_facts
+from rootline.ingest.facts import error_signatures, extract_facts
 from rootline.ingest.parsing import parse_file
 from rootline.ingest.redaction import redact_doc
 from rootline.llm.structured import LLMUnavailable
@@ -179,3 +179,14 @@ def test_error_signatures_and_alerts_are_found() -> None:
         in facts.error_signatures
     )
     assert facts.alerts == ["OrdersDbPoolExhausted"]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "psycopg.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction",
+        "redis.exceptions.ResponseError: OOM command not allowed",
+    ],
+)
+def test_library_errors_without_an_error_suffix_are_signatures(line: str) -> None:
+    assert error_signatures(f"orders-api ERROR {line}") == [line]

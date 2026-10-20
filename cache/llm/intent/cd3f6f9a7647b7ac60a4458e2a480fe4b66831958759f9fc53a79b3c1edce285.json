@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is pasting a live error symptom (checkout returned 503 because the api ran out of database connections) and implicitly wants related documents or RCA information for this active problem."
+}

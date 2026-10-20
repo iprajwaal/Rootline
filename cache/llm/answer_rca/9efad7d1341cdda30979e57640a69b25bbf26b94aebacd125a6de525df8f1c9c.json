@@ -1,0 +1,10 @@
+{
+  "claims": [
+    {
+      "text": "The root causes of the incident are that the deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start, and neither CI nor the readiness probe checked for required config, so the bad revision reached every pod.",
+      "sources": [
+        1
+      ]
+    }
+  ]
+}

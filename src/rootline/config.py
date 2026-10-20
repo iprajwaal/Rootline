@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,6 +47,12 @@ class Settings(BaseSettings):
     log_level: str = "info"
     # The sandbox approved SOP steps run against, and the agent server alerts open threads on.
     shoplite_url: str = "http://localhost:8080"
+    # shoplite: the simulated sandbox. k8s: the shop on the kind cluster, through kubectl.
+    shop_mode: Literal["shoplite", "k8s"] = "shoplite"
+    kube_health_url: str = "http://localhost:30080/health"
+    # The reading and the fixing account's contexts. Empty uses the kubeconfig's current one.
+    kube_context: str = ""
+    kube_fix_context: str = ""
     agent_url: str = "http://localhost:2024"
     action_timeout_s: float = 30.0
     # Browser origins allowed to call the API, such as the chat UI.

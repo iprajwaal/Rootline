@@ -1,0 +1,10 @@
+{
+  "claims": [
+    {
+      "text": "The orders-api 4.18 released with the new sales report endpoint caused the orders db pool to run out during the flash sale, with 20 of 20 pool connections in use per pod and most running the report query.",
+      "sources": [
+        1
+      ]
+    }
+  ]
+}

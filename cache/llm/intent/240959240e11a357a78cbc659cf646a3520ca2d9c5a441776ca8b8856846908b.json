@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The user is searching for a specific document by title and version without asking a question or describing a live issue."
+}

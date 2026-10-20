@@ -116,22 +116,26 @@ def test_issue_no_document_covers_gets_a_tested_breakdown_and_nothing_changes(
     assert "restart" not in planned and "rm -rf" not in text
     assert [step.ordinal for step in state["focus"].plan] == [1, 2, 3]
     assert FOLLOW_UP in text and "Still failing: disk." in text
+    # The agent did not search, but the library was searched before it was handed the issue.
+    assert "No internal SOP or RCA covers this." in text
     assert "**What I looked at** (nothing was changed)" in text
 
 
-def test_running_a_step_runs_its_check_or_tries_its_change_on_a_copy(make_chat: Make) -> None:
+def test_running_a_step_runs_its_check_and_asks_before_a_change(make_chat: Make) -> None:
     shop = disk_shop()
     chat = make_chat(shop, Scripted(investigation()))
     chat.say(DISK_ERROR)
 
     check = reply(chat.say("run step 1"))
-    change = reply(chat.say("run step 2"))
+    paused = chat.say("run step 2")
+    fixed = reply(chat.resume({"type": "approve"}))
 
     assert check.startswith("**Step 1** Confirm the disk is full.")
     assert "/var/lib/shoplite 100% used" in check
-    assert "I did not run it: I only try changes on a copy" in change
-    assert "health would be ok after it" in change
-    assert shop.actions() == [] and shop.broken
+    assert paused["__interrupt__"][0].value["action_requests"][0]["name"] == "clear_tmp"
+    assert "**Health is ok again.**" in fixed
+    assert "Should I write this incident up as a new SOP and RCA?" in fixed
+    assert shop.actions() == ["POST /admin/actions/clear_tmp"] and not shop.broken
 
 
 def test_a_question_about_a_step_goes_back_to_the_agent_with_the_steps(make_chat: Make) -> None:

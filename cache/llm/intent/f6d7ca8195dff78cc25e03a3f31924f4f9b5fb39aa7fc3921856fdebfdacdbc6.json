@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for steps to perform an action (roll back a deployment), which falls under standard operating procedures (SOPs)."
+}

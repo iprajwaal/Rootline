@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "text": "Workers kept restarting, and each restart paused all consumers for a rebalance of 20 to 40 seconds.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Each restart forced a consumer group rebalance, and lag on the orders topic grew to 18,000 messages.",
+      "sources": [
+        8
+      ]
+    }
+  ]
+}

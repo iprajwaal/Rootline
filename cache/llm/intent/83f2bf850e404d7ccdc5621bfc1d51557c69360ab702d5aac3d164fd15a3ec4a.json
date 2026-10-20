@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live alert message indicating a current problem, which corresponds to looking for related documents."
+}

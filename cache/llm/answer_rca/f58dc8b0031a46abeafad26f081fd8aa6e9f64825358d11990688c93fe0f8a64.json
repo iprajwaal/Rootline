@@ -1,0 +1,22 @@
+{
+  "claims": [
+    {
+      "text": "The SRE on-call raised DB_POOL_MAX to 50 on orders-api.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The orders team disabled the sales report endpoint with its feature flag.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The pool limit was raised from 20 to 50 to restore checkout, and then the sales report endpoint was disabled until its query was fixed.",
+      "sources": [
+        5
+      ]
+    }
+  ]
+}

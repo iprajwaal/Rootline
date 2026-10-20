@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem involving checkout payments failing due to an expired payment API key, and is implicitly looking for related documents, past incidents, or SOPs to resolve it."
+}

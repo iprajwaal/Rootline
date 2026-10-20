@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem and symptom (flash sale orders delayed, kafka lag huge) and implies they want related documents or information to help with this active issue."
+}

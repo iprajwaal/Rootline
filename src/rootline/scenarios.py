@@ -19,7 +19,7 @@ from rootline.agent.factory import default_graph
 from rootline.config import Settings
 
 SCENARIOS = Path("scenarios")
-ORDER = ("s1", "s1b", "s2", "s3", "s4", "s5", "s6", "s7", "s8")
+ORDER = ("s1", "s1b", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9")
 FOOTER = re.compile(r"\*steps: (.*?) · LLM calls (\d+) · (\d+) ms\*")
 WAIT_S = 60
 # Approved drafts are the only documents a run adds; removing them restores the corpus.

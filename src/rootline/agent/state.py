@@ -43,6 +43,8 @@ class Focus(BaseModel):
     plan: list[PlanStep] = []
     failing: list[str] = []
     drafts: list[int] = []
+    # Rootline asked whether to write the incident up and waits for a yes or a no.
+    offered: bool = False
 
 
 # Only the messages come in with a turn; the nodes fill in the rest.

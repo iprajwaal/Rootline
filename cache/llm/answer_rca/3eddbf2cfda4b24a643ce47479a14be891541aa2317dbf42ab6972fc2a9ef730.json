@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "text": "On 2026-04-08, orders-worker 2.7 had a first worker restart with OOMKilled (exit code 137).",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The root causes were that orders-worker 2.7 leaked memory through an order cache that was never cleared, and the lag procedure scaled workers without first checking that they were healthy.",
+      "sources": [
+        2
+      ]
+    }
+  ]
+}

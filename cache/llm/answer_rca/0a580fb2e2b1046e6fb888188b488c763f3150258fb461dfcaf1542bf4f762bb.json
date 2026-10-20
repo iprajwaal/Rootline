@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "text": "For 38 minutes orders-api could not get database connections and returned 503 on about 12% of checkout requests.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "A new sales report endpoint held connections while it ran slow queries.",
+      "sources": [
+        3
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "claims": [
+    {
+      "text": "The engineer reports OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "The disk usage check shows /var/lib/shoplite is 41% used.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "No internal SOP or RCA matches the issue.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Clearing temporary files fixed nothing because it fixes nothing broken.",
+      "sources": [
+        4
+      ]
+    }
+  ],
+  "steps": []
+}

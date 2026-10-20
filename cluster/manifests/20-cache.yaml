@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache
+  namespace: shop
+spec:
+  selector: {app: cache}
+  ports: [{port: 6379}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cache
+  namespace: shop
+spec:
+  serviceName: cache
+  replicas: 1
+  # The default, OrderedReady, never replaces a pod that is not ready, so a rollout restart
+  # could not fix a broken cache. Parallel lets the restart replace it.
+  podManagementPolicy: Parallel
+  selector: {matchLabels: {app: cache}}
+  template:
+    metadata: {labels: {app: cache}}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4.1-alpine
+          ports: [{containerPort: 6379}]
+          readinessProbe:
+            exec: {command: [redis-cli, ping]}
+            periodSeconds: 5
+          resources: {requests: {cpu: 50m, memory: 32Mi}, limits: {memory: 128Mi}}

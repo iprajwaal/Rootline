@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The alert shows OrdersApiDiskFull on orders-api with an OSError for No space left on device.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "A dry run of clear_tmp on a copy fixed nothing.",
+      "sources": [
+        5
+      ]
+    },
+    {
+      "text": "Current disk usage check shows /var/lib/shoplite is 41% used.",
+      "sources": [
+        2
+      ]
+    }
+  ],
+  "steps": []
+}

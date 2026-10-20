@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live symptom or problem (consumer lag on the orders queue after worker restarts) and is likely looking for related documents, past incidents, or troubleshooting guides."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The message contains a firing alert for a critical incident, which matches the definition of reporting a live problem and wanting related documents."
+}

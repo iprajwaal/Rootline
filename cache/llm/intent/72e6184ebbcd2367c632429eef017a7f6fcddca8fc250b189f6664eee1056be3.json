@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 1.0,
+  "reason": "The user is explicitly asking to show a specific document by its ID (RCA-2025-014), which fits the definition of the find intent."
+}

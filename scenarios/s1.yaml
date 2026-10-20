@@ -10,7 +10,9 @@ steps:
     expect: {contains: ["I did not run it", "health would be ok after it"], llm_calls_max: 0}
   - act: raise_pool_limit
   - say: done
-    expect: {contains: ["Health is ok now", "SOP-DB-001 (update to v"], llm_calls_max: 1}
+    expect: {contains: ["Health is ok now", "Should I write"], llm_calls_max: 0}
+  - say: "yes"
+    expect: {contains: ["SOP-DB-001 (update to v"], llm_calls_max: 1}
 # The library stays as it is between runs.
 review: reject
 health_after: ok

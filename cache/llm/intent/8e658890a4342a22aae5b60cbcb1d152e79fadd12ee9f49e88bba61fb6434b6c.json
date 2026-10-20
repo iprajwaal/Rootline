@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The message is a live alert indicating a firing critical problem with the payment gateway, meaning the engineer likely wants related documents or suggestions for this symptom."
+}

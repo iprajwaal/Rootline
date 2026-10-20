@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user provided a single error term 'PoolTimeout', which represents a live problem or symptom, and they are likely looking for related documents or RCAs matching this error."
+}

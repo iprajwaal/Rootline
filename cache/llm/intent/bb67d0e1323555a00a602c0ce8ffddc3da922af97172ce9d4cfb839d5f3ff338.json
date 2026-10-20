@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live problem where customers cannot place orders, and is asking to investigate the system and find the logs."
+}

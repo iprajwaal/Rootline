@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The error message is OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "Disk usage check shows /var/lib/shoplite is 41% used.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Clear temp dry run fixed nothing and fixes nothing broken.",
+      "sources": [
+        4
+      ]
+    }
+  ],
+  "steps": []
+}

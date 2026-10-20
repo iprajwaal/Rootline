@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 1.0,
+  "reason": "The user provided a specific document ID (SOP-B-A7F0F4), indicating they want to locate or view that particular document."
+}

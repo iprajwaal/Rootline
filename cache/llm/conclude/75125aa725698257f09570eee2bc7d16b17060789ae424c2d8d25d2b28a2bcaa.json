@@ -1,0 +1,17 @@
+{
+  "claims": [
+    {
+      "text": "Step 2 clears temporary files to fix the disk space issue.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "It is safe because a dry run on a copy of the system showed it fixes disk_full and health is ok after it.",
+      "sources": [
+        2
+      ]
+    }
+  ],
+  "steps": []
+}

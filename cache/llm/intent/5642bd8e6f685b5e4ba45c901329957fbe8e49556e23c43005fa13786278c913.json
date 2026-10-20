@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for an explanation of a specific procedure step involving a command and expected output, which aligns with asking about a Standard Operating Procedure."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.85,
+  "reason": "The message describes a past incident involving a slow sales report and database connections, which points to inquiring about a root cause analysis."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The message only contains a service or component name without any question, error description, or request for procedures, indicating a search for documents related to 'orders-cache'."
+}

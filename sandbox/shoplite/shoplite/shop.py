@@ -18,6 +18,7 @@ COMPONENTS = {
     "disk_full": "disk",
     "bad_config_deploy": "config",
     "worker_oom": "memory",
+    "db_read_only": "db_writes",
 }
 # Read-only check output: (healthy, while its fault is active). The key check reports
 # metadata only, never the key itself.
@@ -44,6 +45,7 @@ CHECK_OUTPUT = {
         "orders-worker 310Mi of 512Mi, 0 restarts",
         "orders-worker 509Mi of 512Mi, 4 restarts (OOMKilled)",
     ),
+    "db_read_only": ("off", "on"),
 }
 
 

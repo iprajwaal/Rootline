@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments scenarios reset
+.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments scenarios reset cluster cluster-down chaos-k8s reset-k8s
 
 install:
 	uv sync
@@ -57,3 +57,27 @@ scenarios:
 # Makes ShopLite healthy again between demo runs; its open alerts resolve within 5 s
 reset:
 	curl -s -X POST localhost:8080/reset
+
+# A real shop on local Kubernetes (kind): orders-api, orders-worker, Postgres, Redis, Redpanda
+cluster:
+	kind get clusters | grep -qx shop || kind create cluster --config cluster/kind.yaml
+	docker build -t shop-orders:dev cluster/orders
+	kind load docker-image shop-orders:dev --name shop
+	kubectl --context kind-shop apply -f cluster/manifests
+	kubectl --context kind-shop -n shop rollout restart deploy
+	for name in statefulset/orders-db statefulset/cache statefulset/order-queue \
+		deploy/orders-api deploy/orders-worker deploy/traffic deploy/alerter; do \
+		kubectl --context kind-shop -n shop rollout status $$name --timeout=300s || exit 1; \
+	done
+	./cluster/kubeconfig.sh
+
+cluster-down:
+	kind delete cluster --name shop
+
+# Real faults on the kind shop: db_pool_exhausted, disk_full, cache_down, queue_consumer_lag,
+# bad_config_deploy
+chaos-k8s:
+	./cluster/chaos.sh $(FAULT)
+
+reset-k8s:
+	./cluster/reset.sh

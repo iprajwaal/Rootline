@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "Messages arrived at 1,200 per second and two workers processed about 700 per second.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Worker count is fixed and sized for normal traffic.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The sale was not on the capacity calendar, so nobody knew traffic would rise.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "A flash sale sent four times the normal order volume, and two workers could not keep up.",
+      "sources": [
+        3
+      ]
+    }
+  ]
+}

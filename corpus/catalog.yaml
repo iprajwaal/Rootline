@@ -86,6 +86,16 @@ faults:
     reveal_check: memory_usage
     fix_action: restart_worker
     docs: brownfield
+  db_read_only:
+    service: orders-db
+    alert: OrdersDbWritesFailing
+    severity: critical
+    error: "psycopg.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction"
+    http_status: 503
+    reveal_check: db_read_only
+    fix_action: allow_db_writes
+    # No SOP or RCA either: the case Rootline learns from, once the engineer approves.
+    docs: none
 
 # Read-only diagnostics. Safe to run without approval.
 checks:
@@ -98,6 +108,7 @@ checks:
   disk_usage: "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite"
   config_diff: "kubectl -n shop rollout history deploy/orders-api --revision=2"
   memory_usage: "kubectl -n shop top pod -l app=orders-worker"
+  db_read_only: "psql -h orders-db -U shop -tA -c \"show default_transaction_read_only\""
 
 # Changes state. Runs only after human approval.
 actions:
@@ -109,3 +120,4 @@ actions:
   clear_tmp: "kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete"
   rollback_config: "kubectl -n shop rollout undo deploy/orders-api"
   restart_worker: "kubectl -n shop rollout restart deploy/orders-worker"
+  allow_db_writes: "psql -h orders-db -U shop -c \"alter system reset default_transaction_read_only\" -c \"select pg_reload_conf()\""

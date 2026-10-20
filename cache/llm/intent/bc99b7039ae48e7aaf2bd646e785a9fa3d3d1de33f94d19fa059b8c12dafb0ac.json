@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for instructions or steps on how to recover a worker after an OOM kill event, which falls under procedure-related queries."
+}

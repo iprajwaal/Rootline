@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The queue lag check shows group orders-worker lag 120 on 6 partitions.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The dry run for scale_consumers fixed nothing and it fixes nothing broken.",
+      "sources": [
+        5
+      ]
+    },
+    {
+      "text": "Documentation notes that orders queue consumer lag stems from slow payment calls.",
+      "sources": [
+        3
+      ]
+    }
+  ],
+  "steps": []
+}

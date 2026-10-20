@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The engineer reports a live problem or symptom involving the orders-worker being killed for memory during the batch, which matches the criteria for suggesting related documents."
+}

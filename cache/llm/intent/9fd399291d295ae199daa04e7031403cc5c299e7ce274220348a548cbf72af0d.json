@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The query consists of keywords referring to a topic without describing a live incident, asking how to do something, or inquiring about a past incident."
+}

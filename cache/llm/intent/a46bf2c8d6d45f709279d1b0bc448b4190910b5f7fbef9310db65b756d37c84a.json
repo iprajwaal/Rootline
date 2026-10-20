@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a live configuration error/alert and is likely looking for related documents or past incidents to resolve it."
+}

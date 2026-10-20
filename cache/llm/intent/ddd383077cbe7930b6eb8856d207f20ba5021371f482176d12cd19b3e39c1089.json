@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is pasting a live error log and symptom, which matches the suggest intent to find related documents."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live error message indicating a connection pool timeout, and wants related documents or solutions for this specific symptom."
+}

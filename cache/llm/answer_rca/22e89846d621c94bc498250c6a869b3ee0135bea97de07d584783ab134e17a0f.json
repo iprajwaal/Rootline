@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The cache pod was evicted during a node drain and did not come back on its own.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "orders-api fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for 22 minutes.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The incident occurred on 2025-10-21.",
+      "sources": [
+        1,
+        3
+      ]
+    }
+  ]
+}

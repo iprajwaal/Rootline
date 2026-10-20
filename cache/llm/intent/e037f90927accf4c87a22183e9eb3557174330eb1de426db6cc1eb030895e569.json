@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 1.0,
+  "reason": "The user is asking about the root cause of a past incident (the June db pool outage), which aligns directly with the ask_rca intent."
+}

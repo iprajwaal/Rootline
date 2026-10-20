@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message contains random words that do not relate to any known knowledge base intent or request."
+}
