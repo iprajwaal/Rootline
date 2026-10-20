@@ -1,0 +1,39 @@
+{
+  "claims": [
+    {
+      "text": "The orders-api is experiencing database connection pool timeouts.",
+      "sources": [
+        1,
+        3
+      ]
+    },
+    {
+      "text": "The database connection count is at 100 of 100, meaning every pool is full.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "The health check shows status degraded and failing on db.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The action raise_pool_limit was rejected by the engineer.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "next_steps": [
+    {
+      "name": "raise_pool_limit",
+      "why": "The action to raise the pool limit was previously rejected by the engineer and needs to be run to recover orders-api from database connection pool exhaustion per SOP-DB-001.",
+      "sources": [
+        1,
+        5
+      ]
+    }
+  ]
+}

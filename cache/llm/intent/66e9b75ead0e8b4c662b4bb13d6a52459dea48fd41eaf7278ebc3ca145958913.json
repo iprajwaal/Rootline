@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a live alert payload with metric and service information, indicating they are experiencing a current problem and want related documents."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 1.0,
+  "reason": "The user is explicitly asking to view a specific document by its ID (rca-2025-014) without asking a question or reporting a live issue."
+}

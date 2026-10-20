@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The engineer is describing a live problem with a specific symptom (checkout failing after a deploy dropped a configuration), which matches the criteria for suggesting related documents based on an error or issue."
+}

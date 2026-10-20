@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.9,
+  "reason": "The message is too vague and lacks specific details about the problem, error, or desired documents to act upon."
+}

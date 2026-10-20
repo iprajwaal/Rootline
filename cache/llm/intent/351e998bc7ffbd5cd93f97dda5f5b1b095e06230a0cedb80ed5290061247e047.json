@@ -1,5 +1,0 @@
-{
-  "intent": "ask_sop",
-  "confidence": 0.95,
-  "reason": "The user is explicitly asking for steps to perform a recovery procedure."
-}

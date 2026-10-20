@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.9,
+  "reason": "The user is asking for both the root cause (matching ask_rca) and rollback steps (matching ask_sop) within a single message, which falls under the unclear category as it mixes several asks."
+}

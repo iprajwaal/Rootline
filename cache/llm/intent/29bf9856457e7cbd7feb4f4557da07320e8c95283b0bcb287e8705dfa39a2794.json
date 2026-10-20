@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.99,
+  "reason": "The user is explicitly asking to locate a specific document (the postmortem for the redis outage) without pasting a live problem or asking an open-ended question about how to fix something."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The message is a live alert indicating a firing critical problem (OrdersDbPoolExhausted) and the user wants related documents or guidance based on this symptom."
+}

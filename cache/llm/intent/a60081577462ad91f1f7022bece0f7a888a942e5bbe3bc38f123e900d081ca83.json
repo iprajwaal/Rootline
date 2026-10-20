@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a Java stack trace showing a live Redis connection exception and wants to find related documents or past incidents to resolve it."
+}

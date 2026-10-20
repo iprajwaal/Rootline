@@ -11,9 +11,19 @@ from rootline.llm.structured import LLMUnavailable, StructuredLLM
 from rootline.retrieval.issue import FRAME
 from rootline.retrieval.search import DOC_ID
 
-# The LLM only chooses between these; "run step N" is always caught by the rules.
-AskedIntent = Literal["find", "suggest", "ask_sop", "ask_rca", "unclear"]
-Intent = Literal["find", "suggest", "ask_sop", "ask_rca", "unclear", "run_step"]
+# The LLM only chooses between these; running a step and drafting are caught by the rules.
+AskedIntent = Literal["find", "suggest", "ask_sop", "ask_rca", "troubleshoot", "unclear"]
+Intent = Literal[
+    "find",
+    "suggest",
+    "ask_sop",
+    "ask_rca",
+    "troubleshoot",
+    "unclear",
+    "run_step",
+    "draft",
+    "recheck",
+]
 Lane = Literal["rca", "sop", "both"]
 
 # Below this the rules are guessing, so the LLM is asked. When the LLM is unsure too or
@@ -21,7 +31,7 @@ Lane = Literal["rca", "sop", "both"]
 SURE = 0.7
 PROMPT_CHARS = 2000
 # Bump when the prompt wording changes. The ledger and traces group calls by it.
-INTENT_PROMPT_VERSION = "intent-v1"
+INTENT_PROMPT_VERSION = "intent-v2"
 
 DOC_WORDS = (
     r"(?:docs?|documents?|rcas?|sops?|runbooks?|playbooks?|post-?mortems?|links?|write-?ups?)"
@@ -63,6 +73,28 @@ LOG_LINE = re.compile(
 )
 ALERT_MARKER = re.compile(r"(?i)\[FIRING:\d+\]|\balertname\s*[=:]|\bstatus\s*[=:]\s*\"?firing\b")
 MESSAGE_TAG = re.compile(r"(?i)</?message>")
+DRAFT = re.compile(
+    r"(?i)\b(?:draft|write(?:\s+up)?)\b(?:\s+(?:the|an?|both|new))*"
+    r"\s+(?:sops?|rcas?|runbooks?|procedures?|post-?mortems?|write-?ups?)\b"
+    r"|\bwrite (?:it|this) up\b"
+)
+# Says the steps were done, or asks whether the issue is gone.
+RECHECK = re.compile(
+    r"(?i)^\W*(?:ok\W+|okay\W+)?(?:done|all done|finished|did it|fixed it)\b"
+    r"|\b(?:i|we)(?: (?:ran|did|followed)|(?: have|'ve) (?:run|done|followed))\b"
+    r"|\bcheck (?:it )?(?:again|now)\b|\bre-?check\b"
+    r"|\b(?:is it|is that|are we) (?:fixed|ok|okay|good|resolved)\b"
+    r"|\bit (?:works|worked)\b"
+)
+# Asks for hands-on help with the live issue, not for a document about it.
+TROUBLESHOOT = re.compile(
+    r"(?i)\b(?:fix|solve|resolve|sort out|mitigate|remediate|debug)\s+"
+    r"(?:it|this|that|the (?:issue|problem|incident|outage|error|alert))\b"
+    r"|\b(?:troubleshoot|investigate|diagnose)\b"
+    r"|\bcommands?\b.*\b(?:fix|solve|resolve)\b"
+    r"|\bwhat (?:do|should|can) (?:i|we) (?:run|do|try) now\b"
+    r"|\bhelp (?:me |us )?(?:fix|solve|resolve|debug)\b"
+)
 RUN_STEP = re.compile(
     r"(?i)\b(?:run|execute|apply|do)\s+(?:the\s+)?(rollback\s+)?step\s*#?\s*(\d+)\b"
 )
@@ -102,6 +134,9 @@ class Signals:
     cues: frozenset[str]
     lane_words: frozenset[str]
     step: tuple[bool, int] | None = None
+    draft: bool = False
+    troubleshoot: bool = False
+    recheck: bool = False
 
 
 @dataclass(frozen=True)
@@ -158,6 +193,9 @@ def read_signals(text: str, catalog: Catalog) -> Signals:
         cues=frozenset(name for name, cue in CUES.items() if cue.search(text)),
         lane_words=frozenset(lane for lane, words in LANE_WORDS.items() if words.search(text)),
         step=(bool(step.group(1)), int(step.group(2))) if step else None,
+        draft=bool(DRAFT.search(text)),
+        troubleshoot=bool(TROUBLESHOOT.search(text)),
+        recheck=bool(RECHECK.search(text)),
     )
 
 
@@ -172,6 +210,13 @@ def rule_guess(signals: Signals) -> Guess:
         return Guess(
             "run_step", 0.95, f"asks to run {'rollback ' if rollback else ''}step {ordinal}"
         )
+    if signals.draft:
+        return Guess("draft", 0.95, "asks to write up the incident")
+    if signals.recheck and "why" not in cues:
+        return Guess("recheck", 0.9, "says the steps were done or asks if it is fixed")
+    # A question about why something happened is about the past, even if it says fix.
+    if signals.troubleshoot and "why" not in cues:
+        return Guess("troubleshoot", 0.9, "asks for help fixing the live issue")
     if signals.doc_id:
         kind = signals.doc_id.split("-")[0]
         if kind == "SOP" and "how" in cues:
@@ -249,8 +294,10 @@ def intent_prompt(text: str) -> str:
         " and SOPs (procedures).\n"
         "find: locate or list documents by ID, title, service, error or a description,"
         " without asking a question.\n"
-        "suggest: they report a live problem (alert, error, log, stack trace, a symptom"
-        " happening now) and need help with it.\n"
+        "suggest: they report or paste a live problem (alert, error, log, stack trace, a"
+        " symptom happening now) and want the related documents.\n"
+        "troubleshoot: they want hands-on help with a live problem: check the system, find"
+        " the cause, give or run the commands to fix it.\n"
         "ask_sop: they ask how to do something, or want steps to follow.\n"
         "ask_rca: they ask about a past incident: what happened, why, the impact or the"
         " root cause.\n"

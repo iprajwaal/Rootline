@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.95,
+  "reason": "The user is asking for hands-on help to fix a live problem (the checkout outage), which aligns with the troubleshoot intent."
+}

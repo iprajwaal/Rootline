@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The user is asking a general cooking question about baking sourdough bread, which is unrelated to technical incident root cause analyses or standard operating procedures for engineering."
+}

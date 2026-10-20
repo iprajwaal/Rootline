@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem with a specific service (orders-worker keeps restarting) and asking for a diagnosis, which implies hands-on help rather than just searching for documents."
+}

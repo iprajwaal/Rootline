@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.95,
+  "reason": "The user is asking about the customer impact of a past incident (payment key expiry), which corresponds to querying past incident write-ups (RCAs)."
+}

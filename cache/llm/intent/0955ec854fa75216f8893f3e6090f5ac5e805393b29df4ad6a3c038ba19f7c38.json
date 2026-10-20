@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a live error stack trace and error message, indicating they are looking for related documents or incidents matching this issue."
+}

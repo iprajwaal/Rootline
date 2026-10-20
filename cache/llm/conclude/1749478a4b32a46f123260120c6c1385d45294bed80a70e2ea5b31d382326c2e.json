@@ -1,0 +1,11 @@
+{
+  "claims": [
+    {
+      "text": "Step 2 clears temporary files older than one day to free up disk space.",
+      "sources": [
+        2
+      ]
+    }
+  ],
+  "steps": []
+}

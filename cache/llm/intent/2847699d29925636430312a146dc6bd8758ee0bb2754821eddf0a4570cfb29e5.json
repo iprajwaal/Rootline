@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.9,
+  "reason": "The user is asking 'why did it happen?', which directly inquires about the root cause of a past incident."
+}

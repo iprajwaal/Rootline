@@ -1,5 +1,0 @@
-{
-  "intent": "ask_sop",
-  "confidence": 0.8,
-  "reason": "The user is asking about a procedural action (rollback), which indicates they want steps to follow."
-}

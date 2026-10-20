@@ -29,7 +29,8 @@ class Part:
     extraction: Extraction
     facts: DocFacts
     chunks: list[Chunk]
-    vectors: list[list[float]]
+    # None where the embedding model could not be reached; the chunk is embedded later.
+    vectors: list[list[float] | None]
 
 
 @dataclass(frozen=True)

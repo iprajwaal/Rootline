@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 1.0,
-  "reason": "The message indicates a live alert ('FIRING:1') for a critical issue ('OrdersDbPoolExhausted orders-api'), meaning the engineer is reporting a live problem and needs help with it."
-}

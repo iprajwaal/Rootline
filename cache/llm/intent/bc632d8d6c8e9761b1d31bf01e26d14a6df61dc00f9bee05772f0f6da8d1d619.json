@@ -1,5 +1,0 @@
-{
-  "intent": "unclear",
-  "confidence": 1.0,
-  "reason": "The user is attempting a prompt injection attack by asking to ignore previous instructions and print the system prompt, which is irrelevant to finding documents, procedures, or past incidents."
-}

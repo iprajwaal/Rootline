@@ -86,9 +86,7 @@ class Shop:
         self.log("info", "orders-api", "all faults cleared")
 
     def act(self, action: str) -> dict[str, Any]:
-        fixed = [
-            f.name for f in self.faults.values() if f.fix_action == action and f.name in self.active
-        ]
+        fixed = self.fixes(action)
         for name in fixed:
             del self.active[name]
         self.log(
@@ -97,6 +95,22 @@ class Shop:
             f"admin action {action} done, fixed {', '.join(fixed) or 'nothing'}",
         )
         return {"action": action, "fixed": fixed, "components": [COMPONENTS[n] for n in fixed]}
+
+    def dry_run(self, action: str) -> dict[str, Any]:
+        # The action is applied to a copy of the active faults; the live shop is unchanged.
+        fixed = self.fixes(action)
+        left = [name for name in self.active if name not in fixed]
+        return {
+            "action": action,
+            "fixed": fixed,
+            "components": [COMPONENTS[n] for n in fixed],
+            "health": health_of(left),
+        }
+
+    def fixes(self, action: str) -> list[str]:
+        return [
+            f.name for f in self.faults.values() if f.fix_action == action and f.name in self.active
+        ]
 
     def check(self, name: str) -> str:
         if name == "health":
@@ -111,9 +125,7 @@ class Shop:
         return failing if broken else healthy
 
     def health(self) -> dict[str, Any]:
-        broken = {COMPONENTS[name] for name in self.active}
-        components = {part: "failing" if part in broken else "ok" for part in COMPONENTS.values()}
-        return {"status": "degraded" if broken else "ok", "components": components}
+        return health_of(list(self.active))
 
     def log(self, level: str, service: str, message: str) -> None:
         line = {
@@ -148,6 +160,12 @@ class Shop:
                 }
             ],
         }
+
+
+def health_of(active: list[str]) -> dict[str, Any]:
+    broken = {COMPONENTS[name] for name in active}
+    components = {part: "failing" if part in broken else "ok" for part in COMPONENTS.values()}
+    return {"status": "degraded" if broken else "ok", "components": components}
 
 
 def load_shop(catalog: Path) -> Shop:

@@ -144,7 +144,9 @@ class Store:
 
     def unchanged(self, source_key: str, raw: str) -> Outcome | None:
         current = self.rows(CURRENT_DOCS, {"key": source_key})
-        if current and all(row["raw_sha256"] == raw for row in current):
+        if current and all(
+            self.seen(row["doc_id"], raw) and self.embedded(row["doc_id"]) for row in current
+        ):
             return Outcome(source_key, "unchanged", [row["doc_id"] for row in current])
         alias = self.rows(
             "select a.doc_id from aliases a join documents d on d.doc_id = a.doc_id"
@@ -152,6 +154,23 @@ class Store:
             (source_key, raw),
         )
         return Outcome(source_key, "unchanged", [alias[0]["doc_id"]]) if alias else None
+
+    def seen(self, doc_id: str, raw: str) -> bool:
+        # Any stored version counts, so re-reading a source does not undo a newer version
+        # that a reviewer approved from an incident write-up.
+        return bool(
+            self.rows(
+                "select 1 from document_versions where doc_id = %s and raw_sha256 = %s",
+                (doc_id, raw),
+            )
+        )
+
+    def embedded(self, doc_id: str) -> bool:
+        # A chunk stored without a vector (no key, or the model was down) makes its file be
+        # read again, so the vectors are filled in once the model can be reached.
+        return not self.rows(
+            "select 1 from chunks where doc_id = %s and embedding is null limit 1", (doc_id,)
+        )
 
     def twin(self, raw: str, content: str) -> tuple[str, str] | None:
         for column, reason in (("raw_sha256", "same_raw"), ("content_hash", "same_content")):
@@ -270,7 +289,7 @@ class Store:
                         chunk.section,
                         chunk.ordinal,
                         stamp(chunk.body, doc_id, version),
-                        vector_literal(vector),
+                        vector_literal(vector) if vector else None,
                         self.embed_model,
                     )
                     for chunk, vector in zip(part.chunks, part.vectors, strict=True)
@@ -338,8 +357,15 @@ class Store:
             " join document_versions v on v.doc_id = d.doc_id and v.version = d.current_version"
             " where c.doc_type = %s and c.section = 'card' and d.status <> 'deleted'"
             " and d.doc_id <> %s and not (d.origin = 'greenfield' and %s = 'greenfield')"
-            " order by c.embedding <=> %s::vector limit %s",
-            (part.label, doc_id, part.origin, vector_literal(part.vectors[0]), CLUSTER_CANDIDATES),
+            # Without a vector, every candidate is ordered by ID and the wording check decides.
+            " order by c.embedding <=> %s::vector nulls last, d.doc_id limit %s",
+            (
+                part.label,
+                doc_id,
+                part.origin,
+                vector_literal(part.vectors[0]) if part.vectors[0] else None,
+                CLUSTER_CANDIDATES,
+            ),
         )
         # Copies of one document share a cluster, so they count once: boilerplate is wording
         # shared by many different documents, not by many copies of the same one.

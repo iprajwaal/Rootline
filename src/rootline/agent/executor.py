@@ -24,18 +24,19 @@ class StepResult(BaseModel):
     kind: Literal["action", "check"]
     name: str
     output: str
-    # True or False after an action that had something to fix; None when there is nothing
-    # to verify, such as a read-only check.
+    # For an action tried on a copy: True or False when it fixed something, None when it
+    # fixed nothing. Always None for a read-only check.
     met: bool | None
     note: str
+    fixed: list[str] = []
 
 
 @dataclass(frozen=True)
 class ShopLite:
     client: httpx.Client
 
-    def act(self, name: str) -> dict[str, Any]:
-        return self.call("POST", f"/admin/actions/{name}")
+    def dry_run(self, name: str) -> dict[str, Any]:
+        return self.call("POST", f"/admin/actions/{name}/dry-run")
 
     def check(self, name: str) -> str:
         return str(self.call("GET", f"/admin/checks/{name}")["output"])
@@ -68,34 +69,33 @@ class Executor:
         return SopStep.model_validate(row) if row else None
 
     def run(self, doc_id: str, version: int, section: Section, ordinal: int) -> StepResult:
-        # The step is read again here, so nothing the chat sends can change what runs.
+        # The step is read again here, so nothing the chat sends can change what runs. Rootline
+        # never changes the system: checks run, and actions are only tried on a copy.
         step = self.step(doc_id, version, section, ordinal)
         if step is None:
             raise LookupError(f"{doc_id} v{version} has no {section} step {ordinal}")
         if step.action:
-            return self.act(step.action)
+            return self.dry_run(step.action)
         if step.check_name:
             return self.check(step.check_name)
         raise LookupError(f"{doc_id} v{version} {section} step {ordinal} has nothing to run")
 
-    def act(self, name: str) -> StepResult:
+    def dry_run(self, name: str) -> StepResult:
+        # Applied to a copy of the sandbox's state, so it shows the effect and changes nothing.
         if name not in self.actions:
             return StepResult(kind="action", name=name, output="", met=False, note="not allowed")
-        done = self.sandbox.act(name)
-        health = self.sandbox.health()
-        lines = [f"{name}: fixed {', '.join(done['fixed']) or 'nothing'}", f"health: {health}"]
-        output = redact("\n".join(lines)).text
+        done = self.sandbox.dry_run(name)
+        health = done["health"]
+        output = redact(f"{name} on a copy: fixed {', '.join(done['fixed']) or 'nothing'}").text
         if not done["fixed"]:
             return StepResult(
-                kind="action",
-                name=name,
-                output=output,
-                met=None,
-                note="nothing it fixes was broken",
+                kind="action", name=name, output=output, met=None, note="it fixes nothing broken"
             )
         met = all(health["components"].get(part) == "ok" for part in done["components"])
-        note = "health is ok again" if met else "health still reports a failure"
-        return StepResult(kind="action", name=name, output=output, met=met, note=note)
+        note = "health would be ok after it" if met else "health would still report a failure"
+        return StepResult(
+            kind="action", name=name, output=output, met=met, note=note, fixed=done["fixed"]
+        )
 
     def check(self, name: str) -> StepResult:
         if name not in self.checks:

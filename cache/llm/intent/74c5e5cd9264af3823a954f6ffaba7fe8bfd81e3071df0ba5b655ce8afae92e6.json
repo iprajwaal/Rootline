@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live error message and service name, indicating they want relevant documents or solutions related to this current problem."
+}

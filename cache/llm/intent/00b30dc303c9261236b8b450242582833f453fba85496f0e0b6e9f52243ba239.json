@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is explicitly asking if there is a runbook for a specific operational issue (consumer lag), which falls under procedures and how-tos."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The engineer reports a live problem where the orders-api service is down right now and is likely looking for related incident write-ups or procedures to help resolve it."
+}

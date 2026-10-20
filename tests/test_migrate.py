@@ -3,7 +3,7 @@ import pytest
 
 from rootline.db.migrate import migrate
 
-ZERO_VECTOR = "[" + ",".join(["0"] * 384) + "]"
+ZERO_VECTOR = "[" + ",".join(["0"] * 768) + "]"
 
 
 def add_document(conn: psycopg.Connection, doc_id: str, doc_type: str) -> None:

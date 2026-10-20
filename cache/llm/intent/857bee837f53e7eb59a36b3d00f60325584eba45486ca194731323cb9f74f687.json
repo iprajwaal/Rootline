@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user provided a single error term 'OOMKilled', which is a symptom of a live or past problem, indicating they want related documents or incident write-ups concerning this error."
+}

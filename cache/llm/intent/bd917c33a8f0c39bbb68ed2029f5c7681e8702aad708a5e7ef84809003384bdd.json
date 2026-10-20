@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a live Python traceback with a database connection timeout error and is likely looking for related incident reports or procedures to resolve it."
+}

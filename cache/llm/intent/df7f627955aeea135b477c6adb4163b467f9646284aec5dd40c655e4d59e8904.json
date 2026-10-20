@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.9,
+  "reason": "The user is asking to investigate active errors in a specific service (orders-api), which implies hands-on help or finding the cause of a live problem."
+}

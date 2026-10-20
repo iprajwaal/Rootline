@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 0.95,
-  "reason": "The user is reporting a live problem where a service (orders-worker) is continuously restarting, and they need help resolving it."
-}

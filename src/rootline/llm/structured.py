@@ -7,7 +7,9 @@ from pathlib import Path
 from langchain.chat_models import init_chat_model
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseChatModel
-from langchain_core.runnables.config import ensure_config, merge_configs
+from langchain_core.messages import AIMessage, AnyMessage
+from langchain_core.runnables.config import RunnableConfig, ensure_config, merge_configs
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from rootline.config import Settings
@@ -46,12 +48,7 @@ class StructuredLLM:
             self.note(request, "llm_unavailable", task, prompt_version, started, "no_api_key")
             raise LLMUnavailable("no API key set")
 
-        # Merged into the inherited config, so inside a graph node the call nests under it.
-        metadata = {"task": task, "prompt_version": prompt_version, "request_id": request}
-        config = merge_configs(
-            ensure_config(),
-            {"run_name": task, "metadata": metadata, "callbacks": list(self.tracing)},
-        )
+        config = self.config(task, prompt_version, request)
         try:
             result = self.chat.with_structured_output(schema).invoke(prompt, config)
         except Exception as error:
@@ -62,6 +59,32 @@ class StructuredLLM:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(result.model_dump_json(indent=2) + "\n")
         return result
+
+    def decide(
+        self, task: str, messages: list[AnyMessage], tools: list[BaseTool], prompt_version: str
+    ) -> AIMessage:
+        # Not cached: each turn carries live check output and times, so no prompt repeats.
+        started = time.perf_counter()
+        request = request_id()
+        if not self.api_key:
+            self.note(request, "llm_unavailable", task, prompt_version, started, "no_api_key")
+            raise LLMUnavailable("no API key set")
+        config = self.config(task, prompt_version, request)
+        try:
+            result = self.chat.bind_tools(tools).invoke(messages, config)
+        except Exception as error:
+            raise LLMUnavailable(f"{self.model} call failed: {error}") from error
+        if not isinstance(result, AIMessage):
+            raise LLMUnavailable(f"{self.model} returned {type(result).__name__}")
+        return result
+
+    def config(self, task: str, prompt_version: str, request: str) -> RunnableConfig:
+        # Merged into the inherited config, so inside a graph node the call nests under it.
+        metadata = {"task": task, "prompt_version": prompt_version, "request_id": request}
+        return merge_configs(
+            ensure_config(),
+            {"run_name": task, "metadata": metadata, "callbacks": list(self.tracing)},
+        )
 
     @cached_property
     def chat(self) -> BaseChatModel:

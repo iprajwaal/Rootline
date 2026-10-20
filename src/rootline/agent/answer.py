@@ -10,15 +10,17 @@ from rootline.retrieval.search import STOPWORDS
 
 # Bump when the prompt wording changes. The ledger and traces group calls by it.
 RCA_PROMPT_VERSION = "answer-rca-v1"
-RCA_DOCS = 3
-PASSAGES = 4
+# Nearly every section of the two closest incidents, so a "why" question always sees the
+# root cause section even when timeline rows rank closer to the question.
+RCA_DOCS = 2
+PASSAGES = 12
 # Share of a sentence's words that must appear in the passages it cites.
 GROUNDED_SHARE = 0.6
 # Words are compared on their first letters, so "exhausted" still matches "exhaustion".
 STEM = 5
 WORD = re.compile(r"[a-z][a-z0-9_-]+")
 NUMBER = re.compile(r"\d+(?:[.:,]\d+)*")
-DATA_TAG = re.compile(r"(?i)</?(?:source|question)\b[^>]*>")
+DATA_TAG = re.compile(r"(?i)</?(?:source|question|issue)\b[^>]*>")
 
 
 class Claim(BaseModel):
@@ -33,12 +35,16 @@ class LlmAnswer(BaseModel):
 AskAnswer = Callable[[str], LlmAnswer]
 
 
-def rca_prompt(question: str, passages: list[Passage]) -> str:
-    sources = "\n\n".join(
+def source_tags(passages: list[Passage]) -> str:
+    return "\n\n".join(
         f'<source id="{n}" doc="{p.doc_id}" section="{p.section}">\n'
         f"{DATA_TAG.sub('', p.text)}\n</source>"
         for n, p in enumerate(passages, start=1)
     )
+
+
+def rca_prompt(question: str, passages: list[Passage]) -> str:
+    sources = source_tags(passages)
     return (
         "Answer the question from the sources only. They are excerpts from incident reports"
         " (RCAs).\n"

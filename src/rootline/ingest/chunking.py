@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 from rootline.core.models import Block, DocFacts, ParsedDoc, RcaRecord, SopRecord
 
-# bge-small reads at most 512 tokens; about 4 characters per token leaves headroom.
+# About 400 tokens: far under the embedding model's 2048, and small enough that a cited
+# section points at the right few lines.
 MAX_CHARS = 1600
 CARD_SUMMARY_CHARS = 500
 SECTION_NUMBER = re.compile(r"^\d+\.\s*")

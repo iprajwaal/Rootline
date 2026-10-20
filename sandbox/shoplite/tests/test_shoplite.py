@@ -51,6 +51,18 @@ def test_check_shows_the_fault_and_the_fix_clears_it(client: TestClient) -> None
     assert client.get("/health").json()["status"] == "ok"
 
 
+def test_dry_run_reports_the_fix_without_changing_the_shop(client: TestClient) -> None:
+    client.post("/chaos/disk_full")
+
+    right = client.post("/admin/actions/clear_tmp/dry-run").json()
+    wrong = client.post("/admin/actions/restart_api/dry-run").json()
+
+    assert right["fixed"] == ["disk_full"] and right["health"]["status"] == "ok"
+    assert wrong["fixed"] == [] and wrong["health"]["components"]["disk"] == "failing"
+    assert client.get("/health").json()["components"]["disk"] == "failing"
+    assert client.post("/admin/actions/rm_rf/dry-run").status_code == 404
+
+
 def test_action_for_another_fault_fixes_nothing(client: TestClient) -> None:
     client.post("/chaos/db_pool_exhausted")
 

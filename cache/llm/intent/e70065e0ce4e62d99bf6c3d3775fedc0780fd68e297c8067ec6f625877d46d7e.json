@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.95,
+  "reason": "The user is asking about a live problem ('pool keep running out') and explicitly requesting hands-on help to fix it ('how do I fix it?')."
+}

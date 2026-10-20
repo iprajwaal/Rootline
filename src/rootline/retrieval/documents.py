@@ -38,6 +38,19 @@ class Document(BaseModel):
     rollback: list[SopStep] = []
 
 
+def as_text(doc: Document) -> str:
+    # The SOP's steps in plain text, for prompts: one line per step with its command.
+    lines = [f"{doc.doc_id} v{doc.version} {doc.title}"]
+    for name, steps in (("Steps", doc.steps), ("Rollback", doc.rollback)):
+        lines += [f"{name}:"] if steps else []
+        for step in steps:
+            parts = [f"{step.ordinal}. {step.instruction}"]
+            parts += [f"command: {step.command}"] if step.command else []
+            parts += [f"expect: {step.expect}"] if step.expect else []
+            lines.append(" | ".join(parts))
+    return "\n".join(lines)
+
+
 def read_document(conn: psycopg.Connection[Any], doc_id: str) -> Document | None:
     with conn.cursor(row_factory=dict_row) as cursor:
         row = cursor.execute(DOCUMENT, (doc_id,)).fetchone()

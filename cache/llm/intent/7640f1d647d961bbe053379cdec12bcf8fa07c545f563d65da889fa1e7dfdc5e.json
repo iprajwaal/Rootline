@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message only contains a greeting ('hi') which is too vague to determine any specific intent."
+}

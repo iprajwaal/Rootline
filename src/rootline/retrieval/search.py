@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from collections import defaultdict
@@ -10,8 +11,9 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel
 
 from rootline.catalog import named_services
-from rootline.ingest.embedding import Embedder, vector_literal
+from rootline.ingest.embedding import Embedder, EmbeddingUnavailable, vector_literal
 
+log = logging.getLogger(__name__)
 Lane = Literal["rca", "sop"]
 LANES: tuple[Lane, ...] = ("rca", "sop")
 
@@ -39,10 +41,11 @@ SNIPPET_CHARS = 220
 # A superseded procedure stays findable, but the current one should come first.
 SUPERSEDED_WEIGHT = 0.8
 SERVICE_WEIGHT = 1.15
-# Measured on dev queries: relevant results score 0.76 to 0.91, unrelated ones 0.50 to 0.67.
-MIN_SIMILARITY = 0.72
+# Measured on dev queries with text-embedding-005: the right document scores 0.62 to 0.73,
+# unrelated queries at most 0.54. Meaning alone must clear the middle of the right ones.
+MIN_SIMILARITY = 0.66
 # Accepted with less similarity when at least two words or a named service also match.
-MIN_SIMILARITY_WITH_EVIDENCE = 0.62
+MIN_SIMILARITY_WITH_EVIDENCE = 0.58
 
 DOCUMENTS = """
     select d.*,
@@ -117,7 +120,8 @@ class LaneResult(BaseModel):
 
 class SearchResponse(BaseModel):
     query: str
-    mode: Literal["id", "title", "hybrid"]
+    # lexical: the embedding model could not be reached, so only keywords were matched.
+    mode: Literal["id", "title", "hybrid", "lexical"]
     rca: LaneResult
     sop: LaneResult
     message: str = ""
@@ -192,20 +196,25 @@ class Searcher:
         return response.model_copy(update={"did_you_mean": hits[1:]})
 
     def hybrid(self, query: str) -> SearchResponse:
-        vector = vector_literal(self.embedder.query(query))
+        try:
+            vector: str | None = vector_literal(self.embedder.query(query))
+        except EmbeddingUnavailable as error:
+            log.warning("search by meaning skipped error=%s", error)
+            vector = None
         words = dict.fromkeys(WORD.findall(query.lower()))
         terms = [w for w in words if len(w) >= 3 and w not in STOPWORDS]
         rare = {t.lower() for t in TOKEN.findall(query) if IDENTIFIER.search(t)}
         rare = {w for t in rare for w in WORD.findall(t)}
         evidence = Evidence(terms, rare, self.named_services(query))
         lanes = {lane: self.lane(lane, vector, evidence) for lane in LANES}
-        return SearchResponse(query=query, mode="hybrid", rca=lanes["rca"], sop=lanes["sop"])
+        mode: Literal["hybrid", "lexical"] = "hybrid" if vector else "lexical"
+        return SearchResponse(query=query, mode=mode, rca=lanes["rca"], sop=lanes["sop"])
 
     def named_services(self, query: str) -> set[str]:
         return named_services(query, self.services)
 
-    def lane(self, lane: Lane, vector: str, evidence: "Evidence") -> LaneResult:
-        semantic = self.rows(SEMANTIC, {"v": vector, "t": lane, "n": CANDIDATES})
+    def lane(self, lane: Lane, vector: str | None, evidence: "Evidence") -> LaneResult:
+        semantic = self.rows(SEMANTIC, {"v": vector, "t": lane, "n": CANDIDATES}) if vector else []
         lexical: list[dict[str, Any]] = []
         if evidence.terms:
             query = " | ".join(evidence.terms)
@@ -226,18 +235,23 @@ class Searcher:
             row = chunks[chunk_id]
             if row["doc_id"] in found:
                 continue
-            match = judge(row, score, similarity.get(chunk_id, 0.0), evidence)
+            match = judge(row, score, similarity.get(chunk_id, 0.0) if vector else None, evidence)
             if match:
                 found[row["doc_id"]] = match
 
         hits = self.hits(found)
         if not hits:
             return LaneResult(hits=[], nothing_relevant=True)
-        best = max(hit.similarity for hit in hits)
-        hits = [hit for hit in hits if hit.similarity >= best - RELATIVE_GAP]
+        if vector:
+            best = max(hit.similarity for hit in hits)
+            hits = [hit for hit in hits if hit.similarity >= best - RELATIVE_GAP]
         # Current documents first; a superseded one stays visible after them.
         hits = sorted(hits, key=lambda hit: hit.status == "superseded")[:PER_LANE]
-        tied = len(hits) > 1 and abs(hits[0].similarity - hits[1].similarity) < SIMILARITY_TIE
+        tied = (
+            bool(vector)
+            and len(hits) > 1
+            and abs(hits[0].similarity - hits[1].similarity) < SIMILARITY_TIE
+        )
         return LaneResult(hits=hits, ambiguous=tied)
 
     def hits(self, found: dict[str, Match]) -> list[Hit]:
@@ -300,13 +314,19 @@ class Evidence:
     services: set[str]
 
 
-def judge(row: dict[str, Any], score: float, similarity: float, evidence: Evidence) -> Match | None:
+def judge(
+    row: dict[str, Any], score: float, similarity: float | None, evidence: Evidence
+) -> Match | None:
     body = row["body"].lower()
     matched = [t for t in evidence.terms if re.search(rf"\b{re.escape(t)}", body)]
     services = sorted(evidence.services & set(row["services"]))
     # A rare identifier counts twice: matching "OOMKilled" says more than matching "orders".
     support = len(matched) + len(evidence.rare & set(matched)) + bool(services)
-    if similarity < MIN_SIMILARITY and not (
+    if similarity is None:
+        # Keywords only: two matching words, a rare identifier or a named service plus a word.
+        if support < 2:
+            return None
+    elif similarity < MIN_SIMILARITY and not (
         support >= 2 and similarity >= MIN_SIMILARITY_WITH_EVIDENCE
     ):
         return None
@@ -314,12 +334,13 @@ def judge(row: dict[str, Any], score: float, similarity: float, evidence: Eviden
         score *= SERVICE_WEIGHT
     if row["status"] == "superseded":
         score *= SUPERSEDED_WEIGHT
-    reasons = [f"section: {row['section']}", f"similarity {similarity:.2f}"]
+    meaning = "keyword match only" if similarity is None else f"similarity {similarity:.2f}"
+    reasons = [f"section: {row['section']}", meaning]
     if services:
         reasons.insert(0, f"service: {', '.join(services)}")
     if matched:
         reasons.insert(0, f"matched: {', '.join(matched[:6])}")
-    return Match(score, similarity, reasons, snippet(row["body"]))
+    return Match(score, similarity or 0.0, reasons, snippet(row["body"]))
 
 
 def lanes_response(

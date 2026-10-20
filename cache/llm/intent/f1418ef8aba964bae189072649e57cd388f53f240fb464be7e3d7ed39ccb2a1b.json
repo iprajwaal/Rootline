@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live problem (Orders API crash loop after deploy with missing config) and is looking for related documents or solutions."
+}

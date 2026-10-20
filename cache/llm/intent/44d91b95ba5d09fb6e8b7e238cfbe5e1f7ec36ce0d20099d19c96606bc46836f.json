@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message 'help' is too vague to determine a specific request for documents, steps, or incident details."
+}

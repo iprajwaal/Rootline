@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.9,
+  "reason": "The message 'fix it' is too vague and does not provide enough context about what needs to be fixed or which documents/procedures are needed."
+}
