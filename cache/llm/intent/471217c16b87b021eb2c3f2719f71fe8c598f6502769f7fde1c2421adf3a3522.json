@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem (getting 401 Unauthorized errors from the payment provider since this morning) and needs help troubleshooting or resolving it."
+}

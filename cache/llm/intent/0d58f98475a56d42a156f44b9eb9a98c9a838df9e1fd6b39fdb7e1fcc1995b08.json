@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live error stack trace (psycopg_pool.PoolTimeout) and likely needs suggestions or help resolving it."
+}

@@ -1,4 +1,5 @@
 import hashlib
+import json
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -29,7 +30,7 @@ from rootline.ingest.store import Store
 from rootline.llm import structured
 from rootline.llm.ledger import Call, PostgresLedger, Prices
 from rootline.llm.structured import LLMUnavailable, StructuredLLM, build_llm
-from rootline.llm.tracing import tracing_callbacks
+from rootline.llm.tracing import mask, tracing_callbacks
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 PRICES = Prices(input_per_mtok=0.30, output_per_mtok=2.50)
@@ -152,6 +153,16 @@ def test_model_is_built_with_the_timeout_and_retry_limit(
     ask(gateway(tmp_path, []))
 
     assert (seen[0]["timeout"], seen[0]["max_retries"]) == (5.0, 1)
+
+
+def test_vertex_ai_key_sends_calls_through_vertex(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    seen = fake_gemini(monkeypatch, JsonModel)
+
+    ask(replace(gateway(tmp_path, []), vertexai=True))
+
+    assert seen[0]["vertexai"] is True
 
 
 def test_answer_is_cached_and_reused_without_an_api_key(
@@ -306,6 +317,19 @@ def test_tracing_reuses_one_langfuse_handler_per_process() -> None:
 
     assert isinstance(handler, CallbackHandler)
     assert tracing_callbacks(settings) == [handler]
+
+
+def test_traced_data_is_redacted_before_it_is_sent() -> None:
+    data = {
+        "messages": [HumanMessage(content="deploy failed with key AKIAABCDEFGHIJKLMNOP")],
+        "notes": ("token ghp_" + "a1" * 18,),
+        "count": 3,
+    }
+
+    masked = json.dumps(mask(data=data))
+
+    assert "AKIAABCDEFGHIJKLMNOP" not in masked and "ghp_a1" not in masked
+    assert "[REDACTED:AWS_ACCESS_KEY]" in masked and '"count": 3' in masked
 
 
 def test_call_outside_a_graph_is_traced_under_its_task_name(

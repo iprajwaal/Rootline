@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.95,
+  "reason": "The user is providing a specific document ID (SOP-DB-001) to locate it in the knowledge base."
+}

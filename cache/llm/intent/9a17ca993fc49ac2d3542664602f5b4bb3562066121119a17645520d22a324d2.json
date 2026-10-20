@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live problem with a vague statement about something being broken again and likely needs immediate help or troubleshooting suggestions."
+}

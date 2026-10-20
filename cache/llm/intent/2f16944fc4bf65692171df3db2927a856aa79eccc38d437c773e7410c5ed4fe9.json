@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The engineer is reporting a live problem where checkout is failing due to a recent deployment issue, and they need help resolving it."
+}

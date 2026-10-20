@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,3 +22,15 @@ def load_catalog(path: Path) -> Catalog:
         checks=raw["checks"],
         actions=raw["actions"],
     )
+
+
+def named_services(text: str, services: dict[str, list[str]]) -> set[str]:
+    lowered = text.lower()
+    return {
+        name
+        for name, aliases in services.items()
+        if any(
+            re.search(rf"(?<![\w-]){re.escape(term.lower())}(?![\w-])", lowered)
+            for term in [name, *aliases]
+        )
+    }

@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.95,
+  "reason": "The engineer is asking about the root cause and details of a past incident involving the orders db pool running out during a flash sale."
+}

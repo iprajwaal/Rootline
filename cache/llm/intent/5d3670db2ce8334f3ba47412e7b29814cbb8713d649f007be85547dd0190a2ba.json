@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message 'something is wrong' is too vague and lacks specific details about a problem, error, document, or procedure to categorize it into any other intent."
+}

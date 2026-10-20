@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 1.0,
+  "reason": "The user is specifically asking about the root cause of a past incident referenced by ID (RCA-2026-007)."
+}

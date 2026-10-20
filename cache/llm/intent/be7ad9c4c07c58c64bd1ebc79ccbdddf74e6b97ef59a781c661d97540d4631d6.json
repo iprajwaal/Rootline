@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live alert message with an alert name, service name, and severity, which indicates they are experiencing a live problem and need help with it."
+}

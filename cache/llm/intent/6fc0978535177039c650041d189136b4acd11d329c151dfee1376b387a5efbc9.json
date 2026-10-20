@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for instructions on what actions to take when a specific issue occurs, which aligns with requesting standard operating procedures or steps to follow."
+}

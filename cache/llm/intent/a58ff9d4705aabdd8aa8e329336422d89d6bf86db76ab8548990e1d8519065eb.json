@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.9,
+  "reason": "The user is asking about the cause of a past event, which corresponds to inquiring about an RCA."
+}
