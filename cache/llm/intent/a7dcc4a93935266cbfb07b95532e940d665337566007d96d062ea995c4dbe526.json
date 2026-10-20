@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem (certificate has expired error) and wants related documents or solutions."
+}

@@ -1,0 +1,65 @@
+{
+  "topic": "DISK",
+  "sop_title": "Clearing Temporary Files to Resolve Disk Full on orders-api",
+  "purpose": "To resolve disk space exhaustion caused by accumulation of temporary files in the orders-api deployment.",
+  "when_to_use": "When the orders-api disk is 100% full and generating OSError No space left on device errors.",
+  "alert": "OrdersApiDiskFull",
+  "prerequisites": [
+    "kubectl access to the shop namespace",
+    "Permissions to execute commands in the orders-api deployment"
+  ],
+  "steps": [
+    {
+      "instruction": "Check the disk usage to confirm the problem.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "/var/lib/shoplite 100% used"
+    },
+    {
+      "instruction": "Clear temporary files to free up disk space.",
+      "command": "kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete",
+      "expect": "Temporary files older than one day are deleted."
+    },
+    {
+      "instruction": "Check the disk usage again to confirm the fix.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "/var/lib/shoplite with available space"
+    }
+  ],
+  "verification": [
+    "Run df -h on /var/lib/shoplite to confirm available space."
+  ],
+  "rollback": [
+    {
+      "instruction": "Deleted temporary files cannot be automatically restored; verify application functionality and regenerate necessary temporary files if required.",
+      "command": "",
+      "expect": "Application functions normally after clearing space."
+    }
+  ],
+  "sop_change": "Created new SOP since no internal SOP covered disk space issues.",
+  "rca_title": "RCA: orders-api Disk Space Exhaustion",
+  "short_description": "Disk full error on orders-api due to accumulated temporary files.",
+  "problem_statement": "OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf' occurred because /var/lib/shoplite reached 100% capacity.",
+  "impact": "orders-api could not write temporary PDF receipt files, leading to application errors.",
+  "trigger": "Accumulation of files in the temporary directory exceeding available disk space.",
+  "immediate_resolution": "Deleted temporary files older than one day using the find command.",
+  "root_causes": [
+    "Uncleaned temporary files accumulating in /var/lib/shoplite/tmp over time."
+  ],
+  "timeline": [
+    {
+      "time": "10:33:13 UTC",
+      "event": "OSError: [Errno 28] No space left on device occurred and disk usage was confirmed at 100%."
+    },
+    {
+      "time": "10:33:19 UTC",
+      "event": "Engineer asked about safety of step 2 and received confirmation."
+    },
+    {
+      "time": "10:33:22 UTC",
+      "event": "Engineer completed the remediation steps."
+    }
+  ],
+  "action_items": [
+    "Implement automated cleanup for temporary files in /var/lib/shoplite/tmp."
+  ]
+}

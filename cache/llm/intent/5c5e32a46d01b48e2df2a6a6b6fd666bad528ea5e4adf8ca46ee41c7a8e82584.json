@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live error log and stack trace, indicating they want related documents or suggestions for this specific problem."
+}

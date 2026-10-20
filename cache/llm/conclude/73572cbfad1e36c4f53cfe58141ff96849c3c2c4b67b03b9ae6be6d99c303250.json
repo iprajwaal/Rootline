@@ -1,0 +1,11 @@
+{
+  "claims": [
+    {
+      "text": "Status is degraded and failing due to the database.",
+      "sources": [
+        1
+      ]
+    }
+  ],
+  "steps": []
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user provided a common Kubernetes error symptom (CrashLoopBackOff) which is a live problem, indicating they want related documents or troubleshooting steps for this error."
+}

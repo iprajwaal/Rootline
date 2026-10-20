@@ -1,0 +1,83 @@
+# Two accounts for Rootline. The reader runs every check and the agent's investigation; the
+# fixer is used only to dry-run a fix and to run one an engineer approved.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rootline-reader
+  namespace: shop
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rootline-reader-token
+  namespace: shop
+  annotations: {kubernetes.io/service-account.name: rootline-reader}
+type: kubernetes.io/service-account-token
+---
+# Reads the shop. exec is needed because psql, redis-cli and df run inside the pods; which
+# commands run is decided by Rootline's catalog, not by this account.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rootline-reader
+  namespace: shop
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create, get]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, replicasets, controllerrevisions]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rootline-reader
+  namespace: shop
+subjects: [{kind: ServiceAccount, name: rootline-reader, namespace: shop}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: rootline-reader}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rootline-fixer
+  namespace: shop
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rootline-fixer-token
+  namespace: shop
+  annotations: {kubernetes.io/service-account.name: rootline-fixer}
+type: kubernetes.io/service-account-token
+---
+# Everything the reader may do, plus changing only what the catalog's fixes change.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rootline-fixer
+  namespace: shop
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create, get]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, replicasets, controllerrevisions]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, deployments/scale, statefulsets/scale]
+    verbs: [patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rootline-fixer
+  namespace: shop
+subjects: [{kind: ServiceAccount, name: rootline-fixer, namespace: shop}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: rootline-fixer}

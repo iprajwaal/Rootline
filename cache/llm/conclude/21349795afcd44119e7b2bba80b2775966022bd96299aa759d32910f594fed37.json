@@ -1,0 +1,39 @@
+{
+  "claims": [
+    {
+      "text": "The check results show that status is degraded because of failing disk.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The disk usage is 100% used at /var/lib/shoplite.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Clearing temporary files in a dry run fixes disk_full and health would be ok after it.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check disk usage to confirm the problem",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "/var/lib/shoplite at 100% used"
+    },
+    {
+      "instruction": "Clear temporary files to fix the disk space issue",
+      "command": "kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete",
+      "expect": "old temporary files deleted successfully"
+    },
+    {
+      "instruction": "Check the health to confirm the fix",
+      "command": "curl -s http://orders-api:8080/health",
+      "expect": "status healthy or no longer degraded by disk"
+    }
+  ]
+}

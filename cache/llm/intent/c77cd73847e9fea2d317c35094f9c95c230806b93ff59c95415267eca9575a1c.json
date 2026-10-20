@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.9,
+  "reason": "The user is asking for a procedure related to the orders queue lag, which indicates they are looking for steps to follow."
+}

@@ -201,6 +201,8 @@ def vetted(
 
 
 def trial_note(trial: StepResult) -> str:
+    if trial.mode == "cluster":
+        return trial.note
     if trial.met is None:
         return "tried on a copy: it fixes nothing that is broken"
     after = "health ok after it" if trial.met else "health still failing after it"

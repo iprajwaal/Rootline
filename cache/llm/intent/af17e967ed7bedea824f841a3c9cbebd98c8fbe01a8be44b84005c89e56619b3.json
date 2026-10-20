@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.8,
+  "reason": "The message is extremely brief and ambiguous, consisting only of 'kafka lag??' with no specific action requested, no live problem details provided, and no clear reference to a document, SOP, or RCA."
+}

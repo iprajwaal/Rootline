@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.9,
+  "reason": "The user is asking for an explanation of a specific operational command used to check database activity, which relates to procedures and how to perform operational tasks."
+}

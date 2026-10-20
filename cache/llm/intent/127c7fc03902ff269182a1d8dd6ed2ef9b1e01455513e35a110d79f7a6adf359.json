@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.85,
+  "reason": "The user is asking about the current live status of a database system ('is db up?'), which implies a need to check the system and diagnose a potential active issue."
+}

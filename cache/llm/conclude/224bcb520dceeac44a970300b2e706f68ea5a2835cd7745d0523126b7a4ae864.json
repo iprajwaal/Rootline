@@ -1,0 +1,29 @@
+{
+  "claims": [
+    {
+      "text": "The error is OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "Disk usage on /var/lib/shoplite is 41% used.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "REF-K8S-002 states that local ephemeral storage limits apply to containers.",
+      "sources": [
+        6
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check the disk usage to confirm the ephemeral storage or mount status.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "Output showing disk or mount statistics."
+    }
+  ]
+}

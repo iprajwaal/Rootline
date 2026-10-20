@@ -1,0 +1,51 @@
+# Plays the part of Prometheus and Alertmanager: probes the shop and sends alerts to Rootline.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alerter
+  namespace: shop
+---
+# Read-only: it lists pods and reads their logs, nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alerter
+  namespace: shop
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alerter
+  namespace: shop
+subjects: [{kind: ServiceAccount, name: alerter, namespace: shop}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: alerter}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alerter
+  namespace: shop
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: alerter}}
+  template:
+    metadata: {labels: {app: alerter}}
+    spec:
+      serviceAccountName: alerter
+      containers:
+        - name: alerter
+          image: shop-orders:dev
+          imagePullPolicy: Never
+          command: [python, alerter.py]
+          envFrom: [{configMapRef: {name: orders-config}}]
+          env:
+            # Rootline's API on the host, reached from inside kind.
+            - {name: WEBHOOK_URL, value: "http://host.docker.internal:8000/incidents"}
+            - {name: PROBE_SECONDS, value: "5"}
+            - {name: HOLD_PROBES, value: "2"}
+            - {name: LAG_THRESHOLD, value: "300"}
+          resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}

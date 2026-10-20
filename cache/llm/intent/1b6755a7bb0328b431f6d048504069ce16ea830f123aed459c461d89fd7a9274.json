@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.95,
+  "reason": "The message refers to a quarterly marketing budget, which is unrelated to technical incident root causes, standard operating procedures, or system troubleshooting."
+}

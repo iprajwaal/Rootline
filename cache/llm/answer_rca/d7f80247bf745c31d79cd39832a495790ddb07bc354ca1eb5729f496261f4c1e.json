@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "Every card payment came back with a 401 for almost an hour.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "About 1,900 checkouts failed in that window.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "51 minutes without card payments.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "About 1,900 checkout attempts failed.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

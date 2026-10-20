@@ -9,4 +9,7 @@ __pycache__/
 data/
 node_modules/
 .DS_Store
-cache
+# Leftovers of an interrupted cache write; the cache itself is committed.
+cache/**/.*
+# The agent's kubeconfig holds a service account token.
+cluster/.kube/

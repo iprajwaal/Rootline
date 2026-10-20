@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 1.0,
+  "reason": "The user is explicitly asking to open a specific document by its ID (sop-cache-001) without asking a question or reporting a live issue."
+}

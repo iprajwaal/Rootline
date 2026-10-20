@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.9,
+  "reason": "The user is asking how to perform a procedure (SSL certificate renewal) which implies they want the steps to follow from an SOP."
+}

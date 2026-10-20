@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.85,
+  "reason": "The user is asking to see logs and understand the current issue, which points to active troubleshooting of a live problem."
+}

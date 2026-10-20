@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "There was 51 minutes without card payments.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "About 1,900 checkout attempts failed.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "Every card payment failed.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "orders-api logged \"payment-gateway returned 401 Unauthorized: api key expired\" and returned 502 to checkout.",
+      "sources": [
+        2
+      ]
+    }
+  ]
+}

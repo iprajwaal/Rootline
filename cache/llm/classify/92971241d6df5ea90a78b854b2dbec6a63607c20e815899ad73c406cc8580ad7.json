@@ -1,0 +1,5 @@
+{
+  "label": "rca",
+  "confidence": 0.5,
+  "reason": "The document body contains corrupted binary or control characters without clear operational procedures or incident details, so it defaults to the baseline category with low confidence."
+}

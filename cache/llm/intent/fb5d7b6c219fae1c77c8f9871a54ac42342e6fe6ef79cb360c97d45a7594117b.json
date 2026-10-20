@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.8,
+  "reason": "The user provided a single keyword 'kafka', which is a service or component name, indicating a request to locate or list related documents without asking a specific question."
+}

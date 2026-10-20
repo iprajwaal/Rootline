@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking how to handle a specific operational issue (consumer lag on the orders queue), which implies they are looking for procedural steps or a guide on how to perform a task."
+}

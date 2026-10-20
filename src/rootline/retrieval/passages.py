@@ -12,12 +12,19 @@ from rootline.retrieval.search import RRF_K, STOPWORDS, WORD
 log = logging.getLogger(__name__)
 
 # The card chunk is a summary built at ingest; answers cite the document's own sections.
+# Only a few documents' chunks are compared, so they are ranked exactly: the approximate
+# index would first take its nearest chunks across all documents and then filter, which can
+# drop the best passages and changes with every index build.
 PASSAGES = """
-    select c.chunk_id, c.doc_id, d.title, c.section, c.body,
-        1 - (c.embedding <=> %(v)s::vector) as similarity
-    from chunks c join documents d on d.doc_id = c.doc_id
-    where c.doc_type = %(t)s and c.doc_id = any(%(ids)s) and c.section <> 'card'
-    order by c.embedding <=> %(v)s::vector
+    with candidates as materialized (
+        select c.chunk_id, c.doc_id, d.title, c.section, c.body, c.embedding
+        from chunks c join documents d on d.doc_id = c.doc_id
+        where c.doc_type = %(t)s and c.doc_id = any(%(ids)s) and c.section <> 'card'
+    )
+    select chunk_id, doc_id, title, section, body,
+        1 - (embedding <=> %(v)s::vector) as similarity
+    from candidates
+    order by embedding <=> %(v)s::vector, chunk_id
     limit %(n)s
 """
 PASSAGES_BY_WORDS = """

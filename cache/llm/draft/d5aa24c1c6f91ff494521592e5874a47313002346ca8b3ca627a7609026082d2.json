@@ -1,0 +1,83 @@
+{
+  "topic": "DATABASE",
+  "sop_title": "SOP-DB-001 v2 Recover orders-api from database connection pool exhaustion",
+  "purpose": "Recover orders-api from database connection pool exhaustion",
+  "when_to_use": "When OrdersDbPoolExhausted alert fires and orders-api logs show pool timeout errors",
+  "alert": "OrdersDbPoolExhausted",
+  "prerequisites": [
+    "Kubectl access to the shop namespace",
+    "PostgreSQL client access to orders-db"
+  ],
+  "steps": [
+    {
+      "instruction": "Confirm the API is failing on pool timeouts.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "expect": "Repeated PoolTimeout lines in the last 15 minutes."
+    },
+    {
+      "instruction": "Count open database connections.",
+      "command": "psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\"",
+      "expect": "The count is at or near 20 times the number of orders-api pods."
+    },
+    {
+      "instruction": "List long running queries that hold connections.",
+      "command": "psql -h orders-db -U shop -c \"select pid, now() - query_start as age, query from pg_stat_activity where state <> 'idle' order by age desc limit 10\"",
+      "expect": "Any query older than 60 seconds is posted in the incident channel with its pid."
+    },
+    {
+      "instruction": "Raise the pool limit.",
+      "command": "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50",
+      "expect": "The rollout completes and new pods start with DB_POOL_MAX=50."
+    },
+    {
+      "instruction": "Confirm the API is healthy.",
+      "command": "curl -s http://orders-api:8080/health",
+      "expect": "Status ok and orders-db ok."
+    }
+  ],
+  "verification": [
+    "curl -s http://orders-api:8080/health returns status ok and orders-db ok"
+  ],
+  "rollback": [
+    {
+      "instruction": "Set the pool limit back once the long running queries are fixed.",
+      "command": "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=20",
+      "expect": "The rollout completes with DB_POOL_MAX=20 and the error rate stays under 1%."
+    }
+  ],
+  "sop_change": "The SOP worked as written.",
+  "rca_title": "RCA-2026-015 Orders API outage from exhausted database connection pool",
+  "short_description": "Orders API connection pool exhaustion due to max connections reached",
+  "problem_statement": "Orders-api encountered database connection pool exhaustion causing psycopg_pool.PoolTimeout errors.",
+  "impact": "API requests failed with pool timeouts after 30 seconds.",
+  "trigger": "OrdersDbPoolExhausted alert fired on orders-api",
+  "immediate_resolution": "Raised the database connection pool limit for the deployment.",
+  "root_causes": [
+    "Database connection pool limit was too low for the load."
+  ],
+  "timeline": [
+    {
+      "time": "10:45:08 UTC",
+      "event": "OrdersDbPoolExhausted alert fired on orders-api."
+    },
+    {
+      "time": "10:45:25 UTC",
+      "event": "Engineer ran step 2 to count open database connections."
+    },
+    {
+      "time": "10:45:58 UTC",
+      "event": "Engineer checked step 4 for raising the pool limit."
+    },
+    {
+      "time": "10:46:20 UTC",
+      "event": "Engineer executed the command to set DB_POOL_MAX=50."
+    },
+    {
+      "time": "10:46:50 UTC",
+      "event": "Engineer marked the procedure as done."
+    }
+  ],
+  "action_items": [
+    "Investigate queries holding database connections for extended periods."
+  ]
+}

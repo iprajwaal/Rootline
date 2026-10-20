@@ -8,7 +8,7 @@ from rootline.agent.drafts import Drafted
 from rootline.agent.executor import StepResult
 from rootline.agent.fallback import Finding
 from rootline.agent.state import PlanStep, Step
-from rootline.agent.troubleshoot import ToolRun
+from rootline.agent.troubleshoot import ToolRun, trial_note
 from rootline.agent.understand import Lane
 from rootline.core.models import SopStep
 from rootline.retrieval.documents import Document, anchor
@@ -158,10 +158,31 @@ class Presenter:
         if result and result.kind == "check":
             parts.append(f"I ran this read-only check for you:\n\n{block(result.output)}")
         elif result:
-            parts.append(
-                "I did not run it: I only try changes on a copy of the system. On the copy,"
-                f" {escape(result.note)}. Run it yourself when you are ready."
-            )
+            parts.append(f"Not run: {escape(trial_note(result))}, so it would not help now.")
+        if step.expect:
+            parts.append(f"You should see: {escape(step.expect)}")
+        return "\n\n".join(parts)
+
+    def ran(self, title: str, step: PlanStep, trial: StepResult, result: StepResult) -> str:
+        parts = [f"**{escape(title)}** {escape(step.instruction)}"]
+        if step.source:
+            parts.append(f"From {self.cited(step.source)}")
+        parts += [
+            f"Ran after your approval: {code(step.command)}",
+            f"Before running: {escape(trial_note(trial))}.",
+            block(result.output or "(no output)"),
+            f"**{escape(result.note.capitalize())}.**",
+        ]
+        if step.expect:
+            parts.append(f"You should see: {escape(step.expect)}")
+        return "\n\n".join(parts)
+
+    def not_run(self, title: str, step: PlanStep, reason: str) -> str:
+        parts = [
+            f"**{escape(title)}** {escape(step.instruction)}",
+            f"Not run, {escape(reason)}. Run it yourself:",
+            block(step.command or step.instruction),
+        ]
         if step.expect:
             parts.append(f"You should see: {escape(step.expect)}")
         return "\n\n".join(parts)

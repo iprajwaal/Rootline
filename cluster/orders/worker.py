@@ -7,6 +7,7 @@ from confluent_kafka import Consumer
 
 logging.basicConfig(format="%(asctime)s %(levelname)s [orders-worker] %(message)s", level="INFO")
 log = logging.getLogger("orders-worker")
+WORK_SECONDS = float(os.environ.get("WORK_SECONDS", "0.05"))
 
 
 def main() -> None:
@@ -27,6 +28,8 @@ def main() -> None:
             if message.error():
                 log.error("consumer error: %s", message.error())
                 continue
+            # Each order takes real work (payment capture, stock), so one worker has a limit.
+            time.sleep(WORK_SECONDS)
             conn.execute(
                 "update orders set status = 'processed' where id = %s", (message.key().decode(),)
             )

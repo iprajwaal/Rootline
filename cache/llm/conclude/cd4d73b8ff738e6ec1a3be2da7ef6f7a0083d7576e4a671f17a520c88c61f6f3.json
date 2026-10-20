@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "The disk usage check shows /var/lib/shoplite is 41% used.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The logs show psycopg_pool.PoolTimeout errors.",
+      "sources": [
+        6
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check the disk usage to confirm the current status.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "Disk usage status for /var/lib/shoplite."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "claims": [
+    {
+      "text": "Disk usage is normal with 1% used on /var/lib/shoplite.",
+      "sources": [
+        1
+      ]
+    }
+  ],
+  "steps": []
+}

@@ -1,0 +1,34 @@
+{
+  "claims": [
+    {
+      "text": "The month-end batch loaded all orders of the month into worker memory at once.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The batch ran inside orders-worker, so its memory use killed the order consumer too.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The month-end batch pulled the whole month of orders into memory.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The month-end report batch ran inside orders-worker and loaded every order of the month into memory.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "Workers hit their 512Mi limit and were killed again and again for just over an hour.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

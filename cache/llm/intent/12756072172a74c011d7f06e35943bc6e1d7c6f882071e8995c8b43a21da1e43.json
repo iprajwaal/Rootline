@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted a live status payload showing a degraded system with a failing database, and wants related documents or guidance for this active issue."
+}

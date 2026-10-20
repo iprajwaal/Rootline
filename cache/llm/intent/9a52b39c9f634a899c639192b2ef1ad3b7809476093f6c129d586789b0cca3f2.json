@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.85,
+  "reason": "The user is explaining an explanation of why an incident occurred in the past, describing the cause and effect of a queue backup."
+}

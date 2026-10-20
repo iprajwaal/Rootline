@@ -1,0 +1,22 @@
+{
+  "claims": [
+    {
+      "text": "orders-worker pods were killed with OOMKilled (exit code 137) every 20 to 30 minutes.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "orders-worker 2.7 leaked memory through an order cache that was never cleared.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The lag procedure scaled workers without first checking that they were healthy.",
+      "sources": [
+        2
+      ]
+    }
+  ]
+}

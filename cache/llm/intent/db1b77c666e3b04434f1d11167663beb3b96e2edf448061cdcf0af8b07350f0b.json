@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.95,
+  "reason": "The user is asking about the cause of a past event (consumer lag building up after the flash sale), which corresponds to inquiring about a past incident's root cause."
+}

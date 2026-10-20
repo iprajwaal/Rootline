@@ -1,0 +1,44 @@
+{
+  "claims": [
+    {
+      "text": "The health check shows status degraded and failing: db.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The database connection count is 100 of 100, indicating every pool is full.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Raising the pool limit fixes the database pool exhaustion and returns health to ok.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Confirm the API is failing on pool timeouts.",
+      "command": "kubectl -n shop logs deploy/orders-api --since=15m",
+      "expect": "Repeated PoolTimeout lines in the last 15 minutes."
+    },
+    {
+      "instruction": "Count open database connections.",
+      "command": "psql -h orders-db -U shop -c \"select count(*) from pg_stat_activity\"",
+      "expect": "The count is at or near 20 times the number of orders-api pods."
+    },
+    {
+      "instruction": "Raise the pool limit.",
+      "command": "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50",
+      "expect": "The rollout completes and new pods start with DB_POOL_MAX=50."
+    },
+    {
+      "instruction": "Confirm the API is healthy.",
+      "command": "curl -s http://orders-api:8080/health",
+      "expect": "Status ok and orders-db ok."
+    }
+  ]
+}

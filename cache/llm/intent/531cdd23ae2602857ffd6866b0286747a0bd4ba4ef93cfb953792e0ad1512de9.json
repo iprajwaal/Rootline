@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The engineer describes a live symptom occurring now (payments slow and failing after key rotation) and wants related documents to help resolve it."
+}

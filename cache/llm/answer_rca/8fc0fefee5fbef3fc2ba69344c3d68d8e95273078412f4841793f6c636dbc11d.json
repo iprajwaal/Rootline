@@ -1,0 +1,82 @@
+{
+  "claims": [
+    {
+      "text": "Node drain started for a kernel upgrade on 2025-10-21 02:10.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Cache pod evicted and orders-api logged connection refused errors for cache:6379 on 2025-10-21 02:11.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Alert OrdersApiHighLatency fired on 2025-10-21 02:14.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Cache pod was found stuck in Pending, its volume bound to the drained node on 2025-10-21 02:29.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Node was back in the cluster and the cache statefulset was restarted on 2025-10-21 02:33.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Latency was back to normal and the incident was closed on 2025-10-21 02:36.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The cache pod was evicted during a node drain and did not come back on its own.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "orders-api fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for 22 minutes.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "Incident start time was 2025-10-21 02:14 UTC with an incident duration of 22 minutes.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "The cache ran as a single pod with no PodDisruptionBudget, so a planned drain took it down.",
+      "sources": [
+        5
+      ]
+    },
+    {
+      "text": "Its volume was bound to one node, so the pod could not move to another node.",
+      "sources": [
+        5
+      ]
+    },
+    {
+      "text": "Checkout p95 latency rose from 250 ms to 2.8 s.",
+      "sources": [
+        6
+      ]
+    },
+    {
+      "text": "orders-api logged \"redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused.\"",
+      "sources": [
+        6
+      ]
+    }
+  ]
+}

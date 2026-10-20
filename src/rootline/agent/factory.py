@@ -4,13 +4,14 @@ import httpx
 
 from rootline.agent.answer import answer_asker
 from rootline.agent.drafts import Drafter, draft_asker
-from rootline.agent.executor import Executor, ShopLite
+from rootline.agent.executor import Executor, Sandbox, ShopLite
 from rootline.agent.graph import Graph, Writers, build_graph
 from rootline.agent.knowledge import Knowledge
+from rootline.agent.kube import KubeShop
 from rootline.agent.present import Presenter
 from rootline.agent.troubleshoot import agent_asker, conclusion_asker
 from rootline.agent.understand import Understander, intent_asker
-from rootline.catalog import load_catalog
+from rootline.catalog import Catalog, load_catalog
 from rootline.config import Settings
 from rootline.ingest.factory import build_embedder
 from rootline.llm.ledger import PostgresLedger
@@ -31,12 +32,22 @@ def default_graph(settings: Settings) -> Graph:
         Writers(answer_asker(llm), agent_asker(llm), conclusion_asker(llm), draft_asker(llm)),
         Executor(
             settings.database_url,
-            ShopLite(
-                httpx.Client(base_url=settings.shoplite_url, timeout=settings.action_timeout_s)
-            ),
+            sandbox(settings, catalog),
             frozenset(catalog.actions),
             frozenset(catalog.checks),
         ),
         Drafter(settings.database_url, catalog),
         tracing_callbacks(settings),
     )
+
+
+def sandbox(settings: Settings, catalog: Catalog) -> Sandbox:
+    if settings.shop_mode == "k8s":
+        return KubeShop(
+            catalog,
+            settings.kube_health_url,
+            settings.action_timeout_s,
+            settings.kube_context,
+            settings.kube_fix_context,
+        )
+    return ShopLite(httpx.Client(base_url=settings.shoplite_url, timeout=settings.action_timeout_s))

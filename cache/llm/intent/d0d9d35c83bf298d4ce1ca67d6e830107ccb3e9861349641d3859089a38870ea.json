@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.9,
+  "reason": "The user is running a command to modify a live deployment, which indicates they want hands-on help fixing a problem rather than just looking up a document."
+}

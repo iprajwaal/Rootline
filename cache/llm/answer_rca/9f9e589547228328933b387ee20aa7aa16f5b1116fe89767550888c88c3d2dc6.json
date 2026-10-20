@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "The cache pod was evicted during a node drain and did not come back on its own on 2025-10-21 02:14 UTC.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "orders-api fell back to the database for every read, and checkout p95 latency rose to 2.8 seconds for 22 minutes.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The cache ran as a single pod with no PodDisruptionBudget, so a planned drain took it down.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "Its volume was bound to one node, so the pod could not move to another node.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

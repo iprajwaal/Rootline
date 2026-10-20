@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.85,
+  "reason": "The user is asking where to execute a specific administrative command, which is a procedural question about how or where to perform an operation."
+}

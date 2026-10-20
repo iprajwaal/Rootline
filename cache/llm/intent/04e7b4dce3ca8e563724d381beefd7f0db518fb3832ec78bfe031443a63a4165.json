@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live problem with the login system and is asking for the solution, which indicates a request for hands-on help to find the cause and fix it."
+}

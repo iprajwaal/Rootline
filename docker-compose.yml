@@ -65,6 +65,18 @@ services:
     environment:
       DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
       SHOPLITE_URL: http://shoplite:8080
+      # SHOP_MODE=k8s make demo points the steps at the kind cluster instead of ShopLite.
+      SHOP_MODE: ${SHOP_MODE:-shoplite}
+      KUBE_HEALTH_URL: http://host.docker.internal:30080/health
+      KUBECONFIG: /app/cluster/.kube/config
+      KUBE_CONTEXT: reader
+      KUBE_FIX_CONTEXT: fixer
+    volumes:
+      - ./corpus:/app/corpus:ro
+      - ./cache:/app/cache
+      - raw:/app/data/raw
+      # Written by make cluster for the rootline account; not committed.
+      - ./cluster/.kube:/app/cluster/.kube:ro
     depends_on:
       seed:
         condition: service_completed_successfully

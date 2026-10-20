@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live problem statement with an alert about a database connection pool being exhausted and is likely looking for related RCAs or SOPs."
+}

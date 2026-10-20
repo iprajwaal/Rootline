@@ -7,6 +7,7 @@ import pytest
 from fake_shop import FakeShop
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
 
 from rootline.agent.answer import AskAnswer, LlmAnswer, answer_asker
 from rootline.agent.drafts import AskDraft, Drafter, draft_asker
@@ -238,6 +239,12 @@ class Chat:
         )
         return state
 
+    def resume(self, decision: dict[str, Any]) -> dict[str, Any]:
+        state: dict[str, Any] = self.graph.invoke(
+            Command(resume={"decisions": [decision]}), self.config
+        )
+        return state
+
 
 @pytest.fixture
 def shop() -> FakeShop:
@@ -255,19 +262,43 @@ def chat(
     return Chat(make_graph(analyzer, search_db_url, offline_settings, shop=shop))
 
 
-def test_action_step_is_tried_on_a_copy_and_never_run(chat: Chat, shop: FakeShop) -> None:
+def test_a_fix_step_is_tried_first_then_waits_for_approval(chat: Chat, shop: FakeShop) -> None:
     chat.say("steps for db pool")
 
-    state = chat.say("run step 4")
-    text = reply(state)
+    paused = chat.say("run step 4")
 
-    assert "__interrupt__" not in state
-    assert text.startswith("**Step 4 of SOP-DB-001 v1** Raise the pool limit.")
-    assert "Run: `kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50`" in text
-    assert "From [\\[SOP\\] SOP-DB-001 v1](http://rootline.test/docs/SOP-DB-001)" in text
-    assert "I did not run it: I only try changes on a copy of the system." in text
-    assert "health would be ok after it" in text
+    [pending] = paused["__interrupt__"]
+    request = pending.value["action_requests"][0]
+    assert request["name"] == "raise_pool_limit"
+    assert "DB_POOL_MAX=50" in request["args"]["command"]
+    assert "Before running: tried on a copy: fixes db_pool_exhausted" in request["description"]
     assert shop.calls[-1] == "POST /admin/actions/raise_pool_limit/dry-run"
+    assert shop.actions() == []
+
+
+def test_an_approved_fix_runs_and_its_output_and_health_are_shown(
+    chat: Chat, shop: FakeShop
+) -> None:
+    chat.say("steps for db pool")
+    chat.say("run step 4")
+
+    text = reply(chat.resume({"type": "approve"}))
+
+    assert text.startswith("**Step 4 of SOP-DB-001 v1** Raise the pool limit.")
+    assert "Ran after your approval: `kubectl -n shop set env deploy/orders-api" in text
+    assert "raise_pool_limit: fixed db_pool_exhausted" in text
+    assert "**Health is ok again.**" in text
+    assert shop.actions() == ["POST /admin/actions/raise_pool_limit"]
+
+
+def test_a_rejected_fix_is_not_run_and_the_command_is_shown(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+    chat.say("run step 4")
+
+    text = reply(chat.resume({"type": "reject", "message": "not during the sale"}))
+
+    assert "Not run, rejected: not during the sale. Run it yourself:" in text
+    assert "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50" in text
     assert shop.actions() == []
 
 

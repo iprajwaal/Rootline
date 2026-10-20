@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.9,
+  "reason": "The message is too vague and does not specify whether the user is looking for a document, a past incident, an SOP, or help with a problem."
+}

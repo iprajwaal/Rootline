@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "PAYMENT_GATEWAY_URL was not set, and the app exits when a required setting is missing.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "A config refactor moved payment settings to a new config map that the deploy did not mount.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "orders-api 5.2 was deployed with a config map that no longer had PAYMENT_GATEWAY_URL, causing every pod to crash loop.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

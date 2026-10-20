@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.9,
+  "reason": "The user is reporting a live or recurring symptom (out of memory error on orders worker during month end) and is likely looking for related documents or past incidents to help address it."
+}

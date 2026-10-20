@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.9,
+  "reason": "The user is asking to fix a live problem (consumer lag) and wants action taken or commands to resolve it."
+}

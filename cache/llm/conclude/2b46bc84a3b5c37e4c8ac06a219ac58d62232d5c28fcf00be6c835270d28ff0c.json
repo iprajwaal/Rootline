@@ -1,0 +1,45 @@
+{
+  "claims": [
+    {
+      "text": "The OrdersApiDiskFull alert is firing on orders-api with OSError: [Errno 28] No space left on device.",
+      "sources": [
+        6
+      ]
+    },
+    {
+      "text": "The health check shows status degraded with failing components db and disk.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The disk usage check shows /var/lib/shoplite at 100% capacity.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "A dry run of clearing the temporary directory lists accumulated junk pdf files and shows it would delete 64 files.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "instruction": "Check the disk usage to confirm the problem.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "Filesystem Size Used Avail Use% Mounted on tmpfs 64M 64M 0 100% /var/lib/shoplite"
+    },
+    {
+      "instruction": "Clear temporary files to free up disk space.",
+      "command": "kubectl -n shop exec deploy/orders-api -- find /var/lib/shoplite/tmp -mtime +1 -delete",
+      "expect": "Command completes successfully without errors."
+    },
+    {
+      "instruction": "Check the disk usage again to confirm the fix.",
+      "command": "kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite",
+      "expect": "Use% drops below 100% and available space is shown."
+    }
+  ]
+}

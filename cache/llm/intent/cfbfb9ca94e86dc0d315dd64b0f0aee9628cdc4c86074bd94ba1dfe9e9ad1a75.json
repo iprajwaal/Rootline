@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user is sharing a live alert ([FIRING:1] OrdersApiHighLatency orders-api) and likely wants related documents or suggestions for this active incident."
+}

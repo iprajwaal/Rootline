@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.95,
+  "reason": "The engineer is asking about a past incident by inquiring what was done the last time a pool exhaustion occurred on orders."
+}

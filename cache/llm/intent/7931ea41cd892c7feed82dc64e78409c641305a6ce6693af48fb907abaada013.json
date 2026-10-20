@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user provided a live error message about a container being killed due to OOM, which matches the criteria for suggesting related documents for a current problem."
+}

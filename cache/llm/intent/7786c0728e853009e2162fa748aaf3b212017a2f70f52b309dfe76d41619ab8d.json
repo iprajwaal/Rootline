@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.85,
+  "reason": "The user is querying for documents related to a specific topic (consumer lag incident) without describing a live incident needing troubleshooting or asking a specific RCA/SOP question."
+}
