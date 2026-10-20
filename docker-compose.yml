@@ -6,6 +6,12 @@ x-app: &app
       required: false
   environment:
     DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
+  # The catalog, the committed LLM cache and the embedding model come from the repo, so the
+  # agent and the API read the same files as the tests.
+  volumes:
+    - ./corpus:/app/corpus:ro
+    - ./cache:/app/cache
+    - ./data/models:/app/data/models
 
 services:
   postgres:

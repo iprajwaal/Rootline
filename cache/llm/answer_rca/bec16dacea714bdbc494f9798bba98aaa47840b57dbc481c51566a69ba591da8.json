@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "text": "During a flash sale the orders topic received about 1,200 messages per second against a normal 300.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "Two orders-worker replicas processed about 700 per second.",
+      "sources": [
+        1
+      ]
+    }
+  ]
+}

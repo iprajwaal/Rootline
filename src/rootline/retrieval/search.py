@@ -21,9 +21,11 @@ TOKEN = re.compile(r"[A-Za-z0-9_]+")
 # Error names like OOMKilled, PoolTimeout or psycopg_pool are rare and specific.
 IDENTIFIER = re.compile(r"[a-z][A-Z]|[A-Z]{2,}[a-z]|_|[A-Za-z]\d|\d[A-Za-z]")
 # Words under 3 letters are dropped by length, so only longer function words are listed.
+# Time words frame a question ("last week") and match almost every timeline.
 STOPWORDS = {
     "and", "are", "does", "for", "from", "how", "our", "please", "show", "that",
     "the", "this", "was", "were", "what", "when", "where", "which", "who", "why", "with", "you",
+    "ago", "last", "month", "night", "today", "week", "year", "yesterday",
 }  # fmt: skip
 CANDIDATES = 30
 RRF_K = 60
@@ -96,6 +98,7 @@ class Hit(BaseModel):
     origin: str
     verified: bool
     needs_review: bool
+    version: int | None
     effective_date: date | None
     services: list[str]
     score: float
@@ -258,6 +261,7 @@ class Searcher:
                 origin=docs[doc_id]["origin"],
                 verified=docs[doc_id]["verified"],
                 needs_review=docs[doc_id]["needs_review"],
+                version=docs[doc_id]["current_version"],
                 effective_date=docs[doc_id]["effective_date"],
                 services=docs[doc_id]["services"],
                 score=round(match.score, 5),

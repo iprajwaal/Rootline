@@ -26,3 +26,7 @@ class Settings(BaseSettings):
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_base_url: str = "https://cloud.langfuse.com"
+    # Where chat answers link to, as seen from the user's browser.
+    public_api_url: str = "http://localhost:8000"
+    # Older documents are still shown, with a note to check they still hold.
+    stale_after_days: int = 365
