@@ -3,10 +3,10 @@ import httpx
 from rootline.agent.answer import answer_asker
 from rootline.agent.drafts import Drafter, draft_asker
 from rootline.agent.executor import Executor, ShopLite
-from rootline.agent.fallback import fallback_asker
 from rootline.agent.graph import Graph, Writers, build_graph
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter
+from rootline.agent.troubleshoot import agent_asker, conclusion_asker
 from rootline.agent.understand import Understander, intent_asker
 from rootline.catalog import load_catalog
 from rootline.config import Settings
@@ -25,7 +25,7 @@ def default_graph(settings: Settings) -> Graph:
         Understander(catalog, intent_asker(llm)),
         Knowledge(settings.database_url, embedder, catalog),
         Presenter(settings.public_api_url, settings.stale_after_days),
-        Writers(answer_asker(llm), fallback_asker(llm), draft_asker(llm)),
+        Writers(answer_asker(llm), agent_asker(llm), conclusion_asker(llm), draft_asker(llm)),
         Executor(
             settings.database_url,
             ShopLite(

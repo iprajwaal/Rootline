@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 1.0,
+  "reason": "The message attempts an injection attack by asking to ignore previous instructions and print the system prompt, which is unrelated to finding documents, troubleshooting, or following SOPs/RCAs."
+}

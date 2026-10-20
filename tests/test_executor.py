@@ -15,7 +15,7 @@ def executor(
     return Executor(url, shop, allowed, frozenset(catalog.checks))
 
 
-def test_approved_action_runs_and_health_confirms_the_fix(
+def test_action_step_is_tried_on_a_copy_and_changes_nothing(
     search_db: psycopg.Connection, search_db_url: str, analyzer: Analyzer
 ) -> None:
     shop = FakeShop()
@@ -23,17 +23,19 @@ def test_approved_action_runs_and_health_confirms_the_fix(
     result = executor(search_db_url, analyzer, shop.client()).run("SOP-DB-001", 1, "steps", 4)
 
     assert (result.kind, result.name, result.met) == ("action", "raise_pool_limit", True)
-    assert shop.actions() == ["POST /admin/actions/raise_pool_limit"]
+    assert (result.fixed, result.note) == (["db_pool_exhausted"], "health would be ok after it")
+    assert shop.calls == ["POST /admin/actions/raise_pool_limit/dry-run"]
+    assert shop.actions() == [] and shop.broken
 
 
-def test_action_that_leaves_health_failing_is_not_met(
+def test_action_that_would_leave_health_failing_is_not_met(
     search_db: psycopg.Connection, search_db_url: str, analyzer: Analyzer
 ) -> None:
     result = executor(search_db_url, analyzer, FakeShop(fixes=False).client()).run(
         "SOP-DB-001", 1, "steps", 4
     )
 
-    assert (result.met, result.note) == (False, "health still reports a failure")
+    assert (result.met, result.note) == (False, "health would still report a failure")
 
 
 def test_action_with_nothing_to_fix_has_nothing_to_verify(
@@ -43,7 +45,7 @@ def test_action_with_nothing_to_fix_has_nothing_to_verify(
         "SOP-DB-001", 1, "steps", 4
     )
 
-    assert (result.met, result.note) == (None, "nothing it fixes was broken")
+    assert (result.met, result.note) == (None, "it fixes nothing broken")
 
 
 def test_check_step_reads_without_changing_anything(
@@ -77,10 +79,11 @@ def test_action_missing_from_the_allowlist_is_never_sent(
 def test_sandbox_output_is_redacted(
     search_db: psycopg.Connection, search_db_url: str, analyzer: Analyzer
 ) -> None:
-    shop = FakeShop(detail="key AKIAABCDEFGHIJKLMNOP")
+    shop = FakeShop(outputs={"db_connections": "count 100 of 100, key AKIAABCDEFGHIJKLMNOP"})
 
-    result = executor(search_db_url, analyzer, shop.client()).run("SOP-DB-001", 1, "steps", 4)
+    result = executor(search_db_url, analyzer, shop.client()).run("SOP-DB-001", 1, "steps", 2)
 
+    assert "count 100 of 100" in result.output
     assert "AKIAABCDEFGHIJKLMNOP" not in result.output
 
 

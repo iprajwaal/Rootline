@@ -88,6 +88,12 @@ def create_app(shop: Shop, webhook: str | None, every: float) -> FastAPI:
             raise HTTPException(404, f"no action {name}")
         return shop.act(name)
 
+    @app.post("/admin/actions/{name}/dry-run")
+    def dry_run(name: str) -> dict[str, Any]:
+        if name not in shop.actions:
+            raise HTTPException(404, f"no action {name}")
+        return shop.dry_run(name)
+
     @app.get("/admin/checks/{name}")
     def check(name: str) -> dict[str, str]:
         if name not in shop.checks:

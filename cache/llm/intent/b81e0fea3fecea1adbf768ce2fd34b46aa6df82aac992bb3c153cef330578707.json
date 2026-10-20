@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 0.95,
-  "reason": "The engineer is reporting a live problem with a specific error message and service name, indicating they need help troubleshooting a current issue."
-}

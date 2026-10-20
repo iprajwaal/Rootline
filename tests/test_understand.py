@@ -67,7 +67,7 @@ def test_dev_examples_are_right_at_least_as_often_as_measured(cascade: Understan
         (f.intent, f.lane) == (q["intent"], q["lane"]) for f, q in zip(found, DEV, strict=True)
     )
 
-    assert right >= 43
+    assert right >= 48
 
 
 def test_document_id_alone_finds_it_in_its_own_list(catalog: Catalog) -> None:
@@ -176,3 +176,22 @@ def test_run_step_is_caught_by_the_rules_with_its_number(
 
 def test_a_question_about_a_step_is_not_a_request_to_run_it(catalog: Catalog) -> None:
     assert Understander(catalog, never).understand("what does step 4 do?").intent == "ask_sop"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "can you give me commands to solve this now?",
+        "fix it",
+        "please investigate the orders-api errors",
+        "help me fix the checkout outage",
+    ],
+)
+def test_asking_for_hands_on_help_goes_to_the_agent(catalog: Catalog, text: str) -> None:
+    found = Understander(catalog, never).understand(text)
+
+    assert (found.intent, found.lane, found.method) == ("troubleshoot", None, "rules")
+
+
+def test_how_to_fix_a_named_thing_still_reads_the_sop(catalog: Catalog) -> None:
+    assert Understander(catalog, never).understand("how do I fix the db pool").intent == "ask_sop"

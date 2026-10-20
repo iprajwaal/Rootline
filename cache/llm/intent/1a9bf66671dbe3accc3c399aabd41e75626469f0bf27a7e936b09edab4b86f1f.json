@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.95,
+  "reason": "The user is asking for commands to solve a live issue right now, which falls under troubleshooting and hands-on help."
+}

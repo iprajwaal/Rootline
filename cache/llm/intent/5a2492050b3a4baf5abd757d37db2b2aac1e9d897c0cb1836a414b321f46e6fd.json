@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.9,
+  "reason": "The query consists solely of a service name 'redis', which indicates a request to locate or list documents related to Redis without asking a specific question or reporting a live incident."
+}

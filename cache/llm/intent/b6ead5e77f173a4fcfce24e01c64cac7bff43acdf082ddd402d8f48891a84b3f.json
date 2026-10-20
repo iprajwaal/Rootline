@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 0.85,
-  "reason": "The message provides a single error symptom (OOMKilled) typically associated with a live container or pod failure, suggesting the engineer needs immediate help with this active problem."
-}

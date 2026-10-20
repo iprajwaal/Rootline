@@ -1,5 +1,0 @@
-{
-  "intent": "find",
-  "confidence": 0.8,
-  "reason": "The user provided a single keyword 'redis', which indicates they are searching for documents related to that service or topic."
-}

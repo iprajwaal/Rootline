@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking how to configure SSO for a specific portal, which implies a request for standard operating procedures or instructions."
+}

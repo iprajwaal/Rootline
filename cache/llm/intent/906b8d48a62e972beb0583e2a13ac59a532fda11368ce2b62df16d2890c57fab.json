@@ -1,5 +1,0 @@
-{
-  "intent": "ask_rca",
-  "confidence": 0.95,
-  "reason": "The user is asking about a past incident (cache outage last month), which corresponds to inquiring about what happened, why, and the root cause."
-}

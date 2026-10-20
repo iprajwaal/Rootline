@@ -1,5 +1,0 @@
-{
-  "intent": "ask_sop",
-  "confidence": 0.95,
-  "reason": "The user is asking how to perform a specific procedure (raising the database pool limit), which corresponds to looking up a Standard Operating Procedure."
-}

@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for instructions on how to perform a specific procedure (restarting the cache safely)."
+}

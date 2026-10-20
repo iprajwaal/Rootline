@@ -1,0 +1,37 @@
+{
+  "claims": [
+    {
+      "text": "The health check showed status degraded and failing disk.",
+      "sources": [
+        1
+      ]
+    },
+    {
+      "text": "The disk usage check showed that /var/lib/shoplite was 100% used.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The action clear_tmp fixed disk_full and health is ok again.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "The final health check showed status ok and failing nothing.",
+      "sources": [
+        5
+      ]
+    }
+  ],
+  "next_steps": [
+    {
+      "name": "health",
+      "why": "Confirms that the issue is fully fixed and health is ok.",
+      "sources": [
+        5
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The user pasted live error logs showing an OOMKilled container event, which indicates they are reporting a live problem and want related documents."
+}

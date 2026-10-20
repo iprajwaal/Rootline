@@ -5,9 +5,10 @@ from datetime import date
 
 from rootline.agent.answer import Claim
 from rootline.agent.drafts import Drafted
-from rootline.agent.executor import Section, StepResult
+from rootline.agent.executor import StepResult
 from rootline.agent.fallback import Finding
-from rootline.agent.state import Step
+from rootline.agent.state import PlanStep, Step
+from rootline.agent.troubleshoot import ToolRun
 from rootline.agent.understand import Lane
 from rootline.core.models import SopStep
 from rootline.retrieval.documents import Document
@@ -23,6 +24,11 @@ MARKDOWN = re.compile(r"([\\`*_\[\]<>#|~])")
 BACKTICKS = re.compile(r"`+")
 TIE = "The first two fit about equally well. Say which one you mean."
 EXCERPTS = 2
+FOLLOW_UP = (
+    "Run the steps in order and tell me what you see. Ask about any step, or say"
+    ' "done" when you have finished and I will check the system.'
+)
+OUTPUT_CHARS = 160
 
 
 @dataclass(frozen=True)
@@ -46,7 +52,7 @@ class Presenter:
             parts += [self.card(hit) for hit in response.did_you_mean]
         return "\n\n".join(parts)
 
-    def suggestions(self, response: SuggestResponse) -> str:
+    def suggestions(self, response: SuggestResponse, sop: Document | None) -> str:
         issue = response.issue
         read = [
             f"alert {', '.join(issue.alerts)}" if issue.alerts else "",
@@ -64,6 +70,14 @@ class Presenter:
             parts += [TIE] if result.ambiguous else []
         if issue.undocumented_alerts:
             parts.append(f"No document lists the alert {', '.join(issue.undocumented_alerts)}.")
+        if sop and sop.steps:
+            parts.append(
+                f"**Steps from** {self.cited(f'{sop.doc_id} v{sop.version}')}\n"
+                + checklist(sop.steps)
+            )
+            if sop.rollback:
+                parts.append("**Rollback**\n" + checklist(sop.rollback))
+            parts.append(FOLLOW_UP)
         return "\n\n".join(parts)
 
     def procedure(self, doc: Document, hit: Hit) -> str:
@@ -126,23 +140,22 @@ class Presenter:
             f" · {escape(passage.title)}"
         )
 
-    def step_result(
-        self, doc_id: str, version: int, section: Section, step: SopStep, result: StepResult
-    ) -> str:
-        label = "Rollback step" if section == "rollback" else "Step"
-        verdict = {
-            True: "expected result met",
-            False: "expected result not met",
-            None: "nothing to verify",
-        }[result.met]
-        parts = [
-            f"**{label} {step.ordinal} of {doc_id} v{version}** {escape(step.instruction)}",
-            f"Ran the sandbox {result.kind} {code(result.name)}."
-            f" Result: {verdict} ({escape(result.note)}).",
-        ]
+    def tried(self, title: str, step: PlanStep, result: StepResult | None) -> str:
+        parts = [f"**{escape(title)}** {escape(step.instruction)}"]
+        if step.source:
+            parts.append(f"From {self.cited(step.source)}")
+        if step.command:
+            parts.append(f"Run: {code(step.command)}")
+        if result and result.kind == "check":
+            parts.append(f"I ran this read-only check for you:\n\n{block(result.output)}")
+        elif result:
+            parts.append(
+                "I did not run it: I only try changes on a copy of the system. On the copy,"
+                f" {escape(result.note)}. Run it yourself when you are ready."
+            )
         if step.expect:
-            parts.append(f"Expected: {escape(step.expect)}")
-        return "\n\n".join([*parts, block(result.output)] if result.output else parts)
+            parts.append(f"You should see: {escape(step.expect)}")
+        return "\n\n".join(parts)
 
     def run_yourself(self, step: SopStep, reason: str) -> str:
         parts = [
@@ -153,14 +166,52 @@ class Presenter:
             parts.append(f"Expect: {escape(step.expect)}")
         return "\n\n".join(parts)
 
-    def fallback(
+    def investigation(
         self,
-        references: list[Reference],
-        findings: list[Finding],
+        done: list[ToolRun],
         claims: list[Claim],
         sources: list[Passage],
+        given: list[PlanStep],
+        planned: bool,
+        failing: list[str] | None,
+        found: list[str],
     ) -> str:
-        parts = ["No internal SOP or RCA covers this."]
+        parts = []
+        if claims:
+            sentences = [f"{escape(c.text)} {self.cite_any(c.sources, sources)}" for c in claims]
+            parts.append("**\\[AI · checked against what I looked at\\]** " + " ".join(sentences))
+        else:
+            parts.append("I could not work out more from what I looked at.")
+        if given:
+            parts.append("**Steps to follow**\n" + "\n".join(self.planned(s) for s in given))
+            parts.append(FOLLOW_UP)
+        elif planned:
+            parts.append("The steps I gave earlier still stand.")
+        if failing is None:
+            parts.append("The sandbox is not reachable, so its state now is unknown.")
+        elif failing:
+            parts.append(f"Still failing: {escape(', '.join(failing))}.")
+        else:
+            parts.append("Health is ok now.")
+        searched = any(run.tool == "search_docs" for run in done)
+        if found:
+            cards = "\n".join(f"- {self.cited(doc_id)}" for doc_id in found)
+            parts.append(f"**Documents I checked**\n{cards}")
+        elif searched:
+            parts.append("No internal SOP or RCA covers this.")
+        looked = [f"{n}. {looked_at(run)}" for n, run in enumerate(done, start=1)]
+        looked += [f"{n}. {escape(s.title)}" for n, s in enumerate(sources, start=1)][len(done) :]
+        parts.append("**What I looked at** (nothing was changed)\n" + "\n".join(looked))
+        return "\n\n".join(parts)
+
+    def fallback(
+        self, references: list[Reference], findings: list[Finding], uncovered: bool
+    ) -> str:
+        parts = ["No internal SOP or RCA covers this."] if uncovered else []
+        parts.append(
+            "The assistant model is not available, so I could not investigate or test a fix."
+            " Here is what the read-only checks and public pages show."
+        )
         if references:
             pages = [
                 f"- [{escape(ref.doc_id)}]({self.link(ref.doc_id)}) {escape(ref.title)}"
@@ -178,16 +229,6 @@ class Presenter:
             logs = [f.output for f in findings if f.check == "logs"]
             parts.append("**Read-only checks**\n" + "\n".join(lines))
             parts += [f"Recent logs\n\n{block(logs[0])}"] if logs else []
-        if claims:
-            sentences = [f"{escape(c.text)} {self.cite_any(c.sources, sources)}" for c in claims]
-            parts.append(
-                "**\\[AI SUGGESTION · unverified\\]** Built from the checks and pages above, not"
-                " from an internal document. Nothing here was run.\n\n" + " ".join(sentences)
-            )
-        parts.append(
-            'Once it is fixed, tell me what you did and say "draft the SOP and RCA". I will'
-            " write both up for review."
-        )
         return "\n\n".join(parts)
 
     def cite_any(self, numbers: list[int], sources: list[Passage]) -> str:
@@ -199,16 +240,40 @@ class Presenter:
         return "".join(cites)
 
     def drafted(self, drafted: Drafted) -> str:
+        sop_note = f"update to v{drafted.sop_version}" if drafted.sop_version > 1 else "new"
+        built = [f"built on {self.cited(drafted.based_on)}"] if drafted.based_on else []
+        built += [f"related to {self.cited(doc_id)}" for doc_id in drafted.related]
         parts = [
-            "Drafted for review. Nothing is searchable until a person approves it.",
-            f"- {escape(BADGE['sop'])} {drafted.sop_id} {escape(drafted.sop_title)}\n"
-            f"- {escape(BADGE['rca'])} {drafted.rca_id} {escape(drafted.rca_title)}",
+            "Health is ok now, so I wrote up the incident from this chat. Nothing is searchable"
+            " until a person approves it."
+            + (" It replaces the drafts written earlier in this chat." if drafted.replaced else ""),
+            f"- {escape(BADGE['sop'])} {drafted.sop_id} ({sop_note}) {escape(drafted.sop_title)}\n"
+            f"- {escape(BADGE['rca'])} {drafted.rca_id} (new) {escape(drafted.rca_title)}",
             f"Review and approve them at {self.base_url}/review",
         ]
+        if built:
+            parts.insert(2, "The write-up is " + ", ".join(built) + ".")
         if drafted.dropped:
             commands = ", ".join(code(command) for command in drafted.dropped)
-            parts.append(f"Left out commands nobody typed in this chat: {commands}")
+            parts.append(f"Left out commands that never appeared in this chat: {commands}")
         return "\n\n".join(parts)
+
+    def planned(self, step: PlanStep) -> str:
+        lines = [f"{step.ordinal}. {escape(step.instruction)}"]
+        lines += [f"   Run: {code(step.command)}"] if step.command else []
+        lines += [f"   You should see: {escape(step.expect)}"] if step.expect else []
+        if step.changes:
+            lines.append(f"   Changes the system. {escape(step.tested.capitalize())}.")
+        if step.source:
+            lines.append(f"   From {self.cited(step.source)}")
+        return "  \n".join(lines)
+
+    def cited(self, doc: str) -> str:
+        # "SOP-DB-001 v2" or "RCA-2025-014": a badge and a link to the document's page.
+        doc_id = doc.split()[0]
+        kind = doc_id.split("-")[0].lower()
+        badge = escape(BADGE.get(kind, "[DOC]"))
+        return f"[{badge} {escape(doc)}]({self.link(doc_id)})"
 
     def choose(self, hits: list[Hit]) -> str:
         cards = [self.card(hit, " · ".join(hit.evidence)) for hit in hits]
@@ -255,6 +320,14 @@ def flags(hit: Hit) -> list[str]:
         plural = "copy" if hit.similar_copies == 1 else "copies"
         notes.append(f"{hit.similar_copies} similar {plural} merged")
     return notes
+
+
+def looked_at(run: ToolRun) -> str:
+    output = " ".join(run.output.split())
+    output = output if len(output) <= OUTPUT_CHARS else output[:OUTPUT_CHARS] + "..."
+    parts = [escape(run.tool) + (f" {code(run.target)}" if run.target else "")]
+    parts += [code(run.command)] if run.command else []
+    return " · ".join(parts) + f" → {escape(output)}"
 
 
 def checklist(steps: list[SopStep]) -> str:

@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 0.95,
-  "reason": "The user provided a live error log showing a container killed due to OOMKilled, which indicates they are experiencing an active incident and need help troubleshooting it."
-}

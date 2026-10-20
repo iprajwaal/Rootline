@@ -1,5 +1,0 @@
-{
-  "intent": "suggest",
-  "confidence": 0.95,
-  "reason": "The user provided a live stack trace showing a JedisConnectionException, which indicates they are experiencing a current problem and need help resolving it."
-}

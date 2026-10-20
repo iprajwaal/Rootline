@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.7,
+  "reason": "The user is asking a brief question about how to perform a rollback, which implies they are looking for standard operating procedures or steps to follow."
+}

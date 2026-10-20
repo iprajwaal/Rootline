@@ -1,5 +1,0 @@
-{
-  "intent": "ask_sop",
-  "confidence": 0.85,
-  "reason": "The user is asking for an explanation of a specific command, which is a procedural query about how a tool or script works."
-}

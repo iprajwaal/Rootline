@@ -1,5 +1,0 @@
-{
-  "intent": "ask_rca",
-  "confidence": 0.95,
-  "reason": "The user is asking about past incidents involving the worker being OOMKilled and the root cause of those occurrences, which directly fits the ask_rca intent."
-}

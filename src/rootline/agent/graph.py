@@ -5,40 +5,65 @@ from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.types import interrupt
 
 from rootline.agent.answer import PASSAGES, RCA_DOCS, AskAnswer, Claim, checked, rca_prompt
-from rootline.agent.drafts import AskDraft, Drafter, draft_prompt, transcript
-from rootline.agent.executor import Executor, SandboxUnavailable, Section
-from rootline.agent.fallback import evidence, fallback_prompt, triage
+from rootline.agent.drafts import AskDraft, Drafter, WriteUp, draft_prompt, transcript
+from rootline.agent.executor import Executor, SandboxUnavailable, Section, StepResult
+from rootline.agent.fallback import triage
 from rootline.agent.guard import MAX_BYTES, GuardReport, guard
 from rootline.agent.knowledge import Knowledge
-from rootline.agent.present import Presenter, footer
-from rootline.agent.state import AgentState, Focus, Step
+from rootline.agent.present import FOLLOW_UP, Presenter, footer
+from rootline.agent.state import AgentState, Focus, PlanStep, Step
+from rootline.agent.toolbox import Toolbox, target
+from rootline.agent.troubleshoot import (
+    MAX_TOOL_CALLS,
+    AskConclusion,
+    AskTools,
+    ToolRun,
+    conclusion_prompt,
+    documents,
+    next_calls,
+    pending,
+    runs,
+    shown,
+    sources,
+    system_prompt,
+    task_prompt,
+    vetted,
+)
 from rootline.agent.understand import Understander, Understanding
 from rootline.catalog import named_services
 from rootline.core.context import request_scope
 from rootline.core.models import SopStep
 from rootline.llm.ledger import elapsed_ms
 from rootline.llm.structured import LLMUnavailable
-from rootline.retrieval.suggest import SuggestResponse
 
 log = logging.getLogger(__name__)
 
 Graph = CompiledStateGraph[AgentState, None, AgentState, AgentState]
-ROUTES = ("find", "suggest", "ask_sop", "ask_rca", "run_step", "draft")
+ROUTES = (
+    "find",
+    "suggest",
+    "ask_sop",
+    "ask_rca",
+    "run_step",
+    "draft",
+    "troubleshoot",
+    "recheck",
+)
 SHOWN_CHARS = 120
-REFERENCE_PASSAGES = 3
+NOTE_CHARS = 300
 
 
 @dataclass(frozen=True)
 class Writers:
-    # The three places an LLM writes text: RCA answers, the no-document summary and drafts.
+    # Where an LLM writes: RCA answers, the agent's turns and conclusion, and drafts.
     rca: AskAnswer
-    fallback: AskAnswer
+    agent: AskTools
+    conclusion: AskConclusion
     draft: AskDraft
 
 
@@ -51,6 +76,11 @@ def build_graph(
     drafter: Drafter,
     tracing: list[BaseCallbackHandler],
 ) -> Graph:
+    # Rootline never changes the system. It runs read-only checks, tries fixes on a copy and
+    # tells the engineer what to run.
+    toolbox = Toolbox(executor, knowledge)
+    catalog = knowledge.catalog
+
     def guard_input(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
         last = state["messages"][-1]
@@ -101,7 +131,7 @@ def build_graph(
             detail=f"{response.mode} search · {hits} hits",
             ms=elapsed_ms(started),
         )
-        return answer(state, step, presenter.found(response, lane))
+        return answer(state, presenter.found(response, lane), step)
 
     def suggest(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -114,46 +144,140 @@ def build_graph(
             detail=f"{rcas} RCAs · {sops} SOPs",
             ms=elapsed_ms(started),
         )
+        issue = response.issue.query
         if response.rca.nothing_relevant and response.sop.nothing_relevant:
-            return fallback(state, step, response)
+            # Nothing internal covers it, so the agent investigates next.
+            return {"messages": step_messages(step), "trace": [step], "focus": Focus(issue=issue)}
         top_sop = response.sop.suggestions[0] if response.sop.suggestions else None
         top_rca = response.rca.suggestions[0] if response.rca.suggestions else None
+        # A cause seen before gets its documents straight away, with the SOP's steps.
+        doc = knowledge.document(top_sop.doc_id) if top_sop and not response.sop.ambiguous else None
         focus = Focus(
             sop=top_sop.doc_id if top_sop else None,
             sop_version=top_sop.version if top_sop else None,
             rca=top_rca.doc_id if top_rca else None,
+            issue=issue,
         )
-        return answer(state, step, presenter.suggestions(response)) | {"focus": focus}
+        return answer(state, presenter.suggestions(response, doc), step) | {"focus": focus}
 
-    def fallback(state: AgentState, found: Step, response: SuggestResponse) -> dict[str, Any]:
-        # Nothing internal covers the issue: read-only checks, public pages and one labelled
-        # summary, in that order.
+    def troubleshoot(state: AgentState) -> dict[str, Any]:
+        chat = transcript(state["messages"], state.get("trace", []))
+        task = task_prompt(chat, state.get("focus", Focus()))
+        return think_on(state, [SystemMessage(content=system_prompt(catalog)), HumanMessage(task)])
+
+    def think(state: AgentState) -> dict[str, Any]:
+        return think_on(state, state["work"])
+
+    def think_on(state: AgentState, work: list[AnyMessage]) -> dict[str, Any]:
         started = time.perf_counter()
-        issue = response.issue.query
+        used = len(runs(work))
+        if used >= MAX_TOOL_CALLS:
+            note = f"stopped: all {MAX_TOOL_CALLS} tool calls used"
+            step = agent_step(state, "think", {"tool_calls": used}, note, started)
+            return {"work": work, "messages": step_messages(step), "trace": [step]}
+        try:
+            with request_scope(state["request_id"]):
+                decided = writers.agent(work)
+        except LLMUnavailable as error:
+            log.warning("agent turn failed error=%s", error)
+            step = agent_step(state, "think", {"tool_calls": used}, "model not available", started)
+            if not used:
+                return fallback(state, step)
+            return {"work": work, "messages": step_messages(step), "trace": [step]}
+        note = shorten(decided.text, NOTE_CHARS) or "no notes"
+        step = agent_step(
+            state, "think", {"next": next_calls(decided) or "answer"}, note, started, 1
+        )
+        return {"work": [*work, decided], "messages": step_messages(step), "trace": [step]}
+
+    def tools(state: AgentState) -> dict[str, Any]:
+        # Every tool reads or tries on a copy, so all of them run without asking.
+        work, results, steps = state["work"], [], []
+        used = len(runs(work))
+        for call in pending(work):
+            started = time.perf_counter()
+            if used >= MAX_TOOL_CALLS:
+                results.append(tool_result(call["id"], call["name"], "not run: no tool calls left"))
+                continue
+            run = ToolRun(
+                tool=call["name"],
+                target=target(call["args"]),
+                command=toolbox.command(call["name"], call["args"]),
+                output=toolbox.run(call["name"], call["args"]),
+            )
+            used += 1
+            results.append(tool_result(call["id"], call["name"], run.output, run))
+            steps.append(agent_step(state, run.tool, {"target": run.target}, shown(run), started))
+        return {
+            "work": [*work, *results],
+            "messages": [message for step in steps for message in step_messages(step)],
+            "trace": steps,
+        }
+
+    def conclude(state: AgentState) -> dict[str, Any]:
+        started = time.perf_counter()
+        done, focus, asked = runs(state["work"]), state.get("focus", Focus()), question(state)
+        cited = sources(done, asked, focus.plan)
+        claims: list[Claim] = []
+        given: list[PlanStep] = []
+        llm_calls = 0
+        try:
+            with request_scope(state["request_id"]):
+                written = writers.conclusion(conclusion_prompt(asked, cited, catalog))
+            claims, llm_calls = checked(written, cited), 1
+            given = vetted(written.steps, done, catalog, try_on_copy)
+        except LLMUnavailable as error:
+            log.warning("agent conclusion skipped error=%s", error)
+        failing = failing_parts(executor)
+        was_failing = bool(focus.failing)
+        focus = focus.model_copy(
+            update={
+                "issue": focus.issue or asked,
+                "plan": given or focus.plan,
+                "failing": merged(focus.failing, failing),
+            }
+        )
+        text = presenter.investigation(
+            done, claims, cited, given, bool(focus.plan), failing, documents(done)
+        )
+        detail = f"{len(claims)} cited sentences · {len(given)} steps · health {health(failing)}"
+        step = agent_step(state, "conclude", {"tool_calls": len(done)}, detail, started, llm_calls)
+        if failing == [] and was_failing:
+            written_up, wrote, focus = write_up(state, focus)
+            return answer(state, f"{text}\n\n{written_up}", step, wrote) | {
+                "work": [],
+                "focus": focus,
+            }
+        return answer(state, text, step) | {"work": [], "focus": focus}
+
+    def recheck(state: AgentState) -> dict[str, Any]:
+        started = time.perf_counter()
+        focus, failing = state.get("focus", Focus()), failing_parts(executor)
+        step = agent_step(state, "recheck", {}, f"health {health(failing)}", started)
+        if failing is None:
+            return answer(state, "The sandbox is not reachable, so I cannot check it now.", step)
+        if failing:
+            # Still broken: the agent looks again with what this incident has learned.
+            update = focus.model_copy(update={"failing": merged(focus.failing, failing)})
+            return {"messages": step_messages(step), "trace": [step], "focus": update}
+        if not (focus.issue or focus.failing):
+            return answer(state, "Health is ok and nothing is failing.", step)
+        text, wrote, focus = write_up(state, focus)
+        return answer(state, text, step, wrote) | {"focus": focus}
+
+    def fallback(state: AgentState, *before: Step) -> dict[str, Any]:
+        # The model is not available: read-only checks and public pages, and no AI text.
+        started = time.perf_counter()
+        issue = state.get("focus", Focus()).issue or question(state)
         findings = triage(executor)
         evidence_text = " ".join([issue, *(f.output for f in findings if f.check != "logs")])
         refs = knowledge.references(evidence_text)
-        pages = knowledge.passages(issue, [r.doc_id for r in refs], "ref", REFERENCE_PASSAGES)
-        sources = [*evidence(findings), *pages]
-        claims: list[Claim] = []
-        llm_calls = 0
-        if sources:
-            try:
-                with request_scope(state["request_id"]):
-                    written = writers.fallback(fallback_prompt(issue, sources))
-                claims, llm_calls = checked(written, sources), 1
-            except LLMUnavailable as error:
-                log.warning("fallback summary skipped error=%s", error)
-        step = Step(
-            request_id=state["request_id"],
-            node="fallback",
-            args={"checks": ", ".join(f.check for f in findings) or "sandbox not reachable"},
-            detail=f"{len(refs)} reference pages · {len(claims)} cited sentences",
-            ms=elapsed_ms(started),
-            llm_calls=llm_calls,
+        checks = ", ".join(f.check for f in findings) or "sandbox not reachable"
+        step = agent_step(
+            state, "fallback", {"checks": checks}, f"{len(refs)} reference pages", started
         )
-        text = presenter.fallback(refs, findings, claims, sources)
-        return answer(state, found, text, step)
+        uncovered = state["understanding"].intent == "suggest"
+        return answer(state, presenter.fallback(refs, findings, uncovered), *before, step)
 
     def ask_sop(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -171,6 +295,7 @@ def build_graph(
             text, detail = presenter.choose(lane.hits[:2]), "two SOPs tie"
         elif hit and doc:
             text = presenter.procedure(doc, hit)
+            text += f"\n\n{FOLLOW_UP}" if focus.issue else ""
             detail = f"{doc.doc_id} v{doc.version} · {len(doc.steps)} steps from sop_steps"
             focus = focus.model_copy(update={"sop": doc.doc_id, "sop_version": doc.version})
         else:
@@ -182,7 +307,7 @@ def build_graph(
             detail=detail,
             ms=elapsed_ms(started),
         )
-        return answer(state, step, text) | {"focus": focus}
+        return answer(state, text, step) | {"focus": focus}
 
     def ask_rca(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -219,91 +344,120 @@ def build_graph(
         cited = passages[claims[0].sources[0] - 1].doc_id if claims else None
         rca = cited or (hits[0].doc_id if hits else None)
         focus = state.get("focus", Focus()).model_copy(update={"rca": rca})
-        return answer(state, step, reply_text) | {"focus": focus}
+        return answer(state, reply_text, step) | {"focus": focus}
 
     def run_step(state: AgentState) -> dict[str, Any]:
+        # A step is explained and tried, never done: checks run, changes run on a copy only.
         started = time.perf_counter()
         found, focus = state["understanding"], state.get("focus", Focus())
         section: Section = "rollback" if found.rollback else "steps"
         ordinal = found.step or 0
-        sop_step = None
-        if focus.sop and focus.sop_version:
-            sop_step = executor.step(focus.sop, focus.sop_version, section, ordinal)
-        if not focus.sop or not focus.sop_version:
-            text, detail = "Open an SOP first, for example: steps for db pool.", "no SOP in focus"
-        elif sop_step is None:
-            kind = "rollback step" if found.rollback else "step"
-            text = f"{focus.sop} v{focus.sop_version} has no {kind} {ordinal}."
-            detail = "no such step"
-        elif sop_step.action:
-            # Pauses the run until someone approves or rejects in the chat UI.
-            ok, message = approved(interrupt(approval_request(focus, section, sop_step)))
-            if ok:
-                text, detail = execute(focus.sop, focus.sop_version, section, sop_step)
-            else:
-                reason = f"rejected: {message}" if message else "rejected"
-                text, detail = presenter.run_yourself(sop_step, reason), "rejected"
-        elif sop_step.check_name:
-            # Checks only read, so they run without asking.
-            text, detail = execute(focus.sop, focus.sop_version, section, sop_step)
+        if focus.plan and not focus.sop:
+            text, detail = plan_step(focus.plan, ordinal)
+            args: dict[str, str | int | float] = {"plan": "investigation", "step": ordinal}
         else:
-            text = presenter.run_yourself(sop_step, "this step has no sandbox action")
-            detail = "manual step"
+            text, detail = sop_step(focus, section, ordinal, found.rollback)
+            args = {"sop": focus.sop or "none", "section": section, "step": ordinal}
         step = Step(
             request_id=state["request_id"],
             node="run_step",
-            args={"sop": focus.sop or "none", "section": section, "step": ordinal},
+            args=args,
             detail=detail,
             ms=elapsed_ms(started),
         )
-        return answer(state, step, text)
+        return answer(state, text, step)
+
+    def plan_step(plan: list[PlanStep], ordinal: int) -> tuple[str, str]:
+        given = next((step for step in plan if step.ordinal == ordinal), None)
+        if given is None:
+            return f"The steps I gave have no step {ordinal}.", "no such step"
+        result = try_command(given.command)
+        return presenter.tried(f"Step {ordinal}", given, result), outcome(result)
+
+    def sop_step(focus: Focus, section: Section, ordinal: int, rollback: bool) -> tuple[str, str]:
+        if not focus.sop or not focus.sop_version:
+            return "Open an SOP first, for example: steps for db pool.", "no SOP in focus"
+        stored = executor.step(focus.sop, focus.sop_version, section, ordinal)
+        kind = "rollback step" if rollback else "step"
+        if stored is None:
+            return f"{focus.sop} v{focus.sop_version} has no {kind} {ordinal}.", "no such step"
+        if not (stored.action or stored.check_name):
+            return presenter.run_yourself(stored, "it has no sandbox check"), "manual step"
+        try:
+            result: StepResult | None = executor.run(focus.sop, focus.sop_version, section, ordinal)
+        except SandboxUnavailable as error:
+            log.warning("step not tried error=%s", error)
+            result = None
+        title = f"{kind.capitalize()} {ordinal} of {focus.sop} v{focus.sop_version}"
+        cited = f"{focus.sop} v{focus.sop_version}"
+        return presenter.tried(title, as_plan_step(stored, cited), result), outcome(result)
+
+    def try_command(command: str) -> StepResult | None:
+        checks = {line: name for name, line in catalog.checks.items()}
+        actions = {line: name for name, line in catalog.actions.items()}
+        try:
+            if command in checks:
+                return executor.check(checks[command])
+            if command in actions:
+                return executor.dry_run(actions[command])
+        except SandboxUnavailable as error:
+            log.warning("step not tried error=%s", error)
+        return None
+
+    def try_on_copy(name: str) -> StepResult | None:
+        try:
+            return executor.dry_run(name)
+        except SandboxUnavailable as error:
+            log.warning("dry run failed error=%s", error)
+            return None
 
     def draft(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
-        llm_calls = 0
-        failing = still_failing(executor)
+        # A sandbox that cannot be reached is not proof of a failure, so drafting goes ahead.
+        failing = failing_parts(executor)
         if failing:
             text = (
                 f"The system still reports a failure ({', '.join(failing)}). Fix it first,"
                 " then ask me to draft the SOP and RCA."
             )
-            detail = "not healthy yet"
-        else:
-            chat = transcript(state["messages"], state.get("trace", []))
-            catalog = drafter.catalog
-            services = sorted(named_services(chat, catalog.services))
-            alerts = [alert for alert, service in catalog.alerts.items() if service in services]
-            try:
-                with request_scope(state["request_id"]):
-                    written = writers.draft(draft_prompt(chat, services, alerts))
-                drafted = drafter.save(written, chat, services, presenter.today())
-                text, llm_calls = presenter.drafted(drafted), 1
-                detail = f"{drafted.sop_id} and {drafted.rca_id} queued for review"
-            except LLMUnavailable as error:
-                log.warning("draft skipped error=%s", error)
-                text = (
-                    "The drafting model is not available, so nothing was drafted. Try again later."
-                )
-                detail = "llm down"
-        step = Step(
-            request_id=state["request_id"],
-            node="draft",
-            args={},
-            detail=detail,
-            ms=elapsed_ms(started),
-            llm_calls=llm_calls,
-        )
-        return answer(state, step, text)
+            step = agent_step(state, "draft", {}, "not healthy yet", started)
+            return answer(state, text, step)
+        text, wrote, focus = write_up(state, state.get("focus", Focus()))
+        return answer(state, text, wrote) | {"focus": focus}
 
-    def execute(doc_id: str, version: int, section: Section, sop_step: SopStep) -> tuple[str, str]:
+    def write_up(state: AgentState, focus: Focus) -> tuple[str, Step, Focus]:
+        # The incident's memory becomes an SOP (a new version of the one followed, or a new
+        # one) and an RCA, queued for a person to review.
+        started = time.perf_counter()
+        chat = transcript(state["messages"], state.get("trace", []))
+        services = sorted(named_services(chat, catalog.services))
+        alerts = [alert for alert, service in catalog.alerts.items() if service in services]
+        followed = knowledge.document(focus.sop) if focus.sop else None
+        llm_calls = 0
         try:
-            result = executor.run(doc_id, version, section, sop_step.ordinal)
-        except SandboxUnavailable as error:
-            log.warning("step not run error=%s", error)
-            return presenter.run_yourself(sop_step, "the sandbox is not reachable"), "sandbox down"
-        verdict = {True: "met", False: "not met", None: "nothing to verify"}[result.met]
-        text = presenter.step_result(doc_id, version, section, sop_step, result)
-        return text, f"{result.kind} {result.name} · {verdict}"
+            with request_scope(state["request_id"]):
+                written = writers.draft(draft_prompt(chat, services, alerts, followed))
+            trace = state.get("trace", [])
+            context = WriteUp(
+                services,
+                presenter.today(),
+                followed,
+                focus.rca,
+                tuple(focus.drafts),
+                trace[0].at if trace else None,
+            )
+            drafted = drafter.save(written, chat, context)
+            text, llm_calls = presenter.drafted(drafted), 1
+            detail = f"{drafted.sop_id} v{drafted.sop_version} and {drafted.rca_id} for review"
+            focus = focus.model_copy(update={"drafts": drafted.review_ids})
+        except LLMUnavailable as error:
+            log.warning("draft skipped error=%s", error)
+            text = (
+                "Health is ok now, but the drafting model is not available, so nothing was"
+                ' written up. Say "draft the SOP and RCA" later to try again.'
+            )
+            detail = "llm down"
+        return text, agent_step(state, "draft", {}, detail, started, llm_calls), focus
 
     builder = StateGraph(AgentState)
     builder.add_node("guard", guard_input)
@@ -314,19 +468,52 @@ def build_graph(
     builder.add_node("ask_rca", ask_rca)
     builder.add_node("run_step", run_step)
     builder.add_node("draft", draft)
+    builder.add_node("recheck", recheck)
+    builder.add_node("troubleshoot", troubleshoot)
+    builder.add_node("think", think)
+    builder.add_node("tools", tools)
+    builder.add_node("conclude", conclude)
     builder.add_node("reply", reply)
     builder.add_edge(START, "guard")
     builder.add_edge("guard", "understand")
     builder.add_conditional_edges("understand", route, [*ROUTES, "reply"])
-    for node in (*ROUTES, "reply"):
+    for node in ("suggest", "recheck"):
+        builder.add_conditional_edges(node, after_handoff, ["troubleshoot", END])
+    for node in ("troubleshoot", "think"):
+        builder.add_conditional_edges(node, after_think, ["tools", "conclude", END])
+    builder.add_edge("tools", "think")
+    for node in ("find", "ask_sop", "ask_rca", "run_step", "draft", "conclude", "reply"):
         builder.add_edge(node, END)
     # With Langfuse keys set, every node run and the LLM calls inside it land in one trace.
     return builder.compile().with_config(callbacks=tracing)
 
 
 def route(state: AgentState) -> str:
-    intent = state["understanding"].intent
-    return intent if intent in ROUTES else "reply"
+    found, focus = state["understanding"], state.get("focus", Focus())
+    # A cause the library covers gets its SOP directly; the agent is for what it does not.
+    if found.intent == "troubleshoot" and focus.sop:
+        return "ask_sop"
+    # In an investigation, a question that names nothing new is a follow-up for the agent.
+    investigating = bool(focus.plan) and not focus.sop
+    if found.intent in ("ask_sop", "unclear") and investigating and not topical(found):
+        return "troubleshoot"
+    return found.intent if found.intent in ROUTES else "reply"
+
+
+def after_handoff(state: AgentState) -> str:
+    return END if answered(state) else "troubleshoot"
+
+
+def after_think(state: AgentState) -> str:
+    if answered(state):
+        return END
+    return "tools" if pending(state["work"]) else "conclude"
+
+
+def answered(state: AgentState) -> bool:
+    # A turn ends with the reply; step cards end with a tool result.
+    last = state["messages"][-1]
+    return isinstance(last, AIMessage) and not last.tool_calls
 
 
 def reply(state: AgentState) -> dict[str, Any]:
@@ -338,57 +525,83 @@ def reply(state: AgentState) -> dict[str, Any]:
     if found.alternatives:
         lines.append(f"Could also be: {', '.join(found.alternatives)}.")
     step = Step(request_id=state["request_id"], node="reply", args={}, detail="no route", ms=0)
-    return answer(state, step, "\n".join(lines))
+    return answer(state, "\n".join(lines), step)
 
 
 def topical(found: Understanding) -> bool:
     return bool(found.doc_id or found.services or found.errors or found.alerts)
 
 
-def approval_request(focus: Focus, section: Section, step: SopStep) -> dict[str, Any]:
-    # The HITLRequest shape agent-chat-ui shows as an approve or reject card. Edits are not
-    # offered: the executor runs the stored action, so an edited command would not be it.
-    name = step.action or ""
-    where = (
-        f"{focus.sop} v{focus.sop_version} {'rollback step' if section == 'rollback' else 'step'}"
+def as_plan_step(step: SopStep, source: str) -> PlanStep:
+    return PlanStep(
+        ordinal=step.ordinal,
+        instruction=step.instruction,
+        command=step.command or "",
+        expect=step.expect or "",
+        changes=bool(step.action),
+        source=source,
     )
-    return {
-        "action_requests": [
-            {
-                "name": name,
-                "args": {"sop": focus.sop, "step": step.ordinal, "command": step.command or ""},
-                "description": f"{where} {step.ordinal}: {step.instruction}\n"
-                f"Expect: {step.expect or 'not stated'}",
-            }
-        ],
-        "review_configs": [{"action_name": name, "allowed_decisions": ["approve", "reject"]}],
-    }
 
 
-def approved(resume: Any) -> tuple[bool, str]:
-    # The UI resumes with {"decisions": [{"type": "approve"}]}; anything else counts as no.
-    decisions = resume.get("decisions") if isinstance(resume, dict) else None
-    first = decisions[0] if isinstance(decisions, list) and decisions else None
-    if not isinstance(first, dict):
-        return False, ""
-    return first.get("type") == "approve", str(first.get("message") or "")
+def outcome(result: StepResult | None) -> str:
+    if result is None:
+        return "not tried"
+    if result.kind == "check":
+        return f"check {result.name} ran"
+    return f"action {result.name} tried on a copy · {result.note}"
 
 
-def still_failing(executor: Executor) -> list[str]:
-    # A sandbox that cannot be reached is not proof of a failure, so drafting goes ahead.
+def tool_result(
+    call_id: str | None, name: str, output: str, run: ToolRun | None = None
+) -> ToolMessage:
+    return ToolMessage(
+        content=output,
+        tool_call_id=call_id or "",
+        name=name,
+        artifact=run.model_dump() if run else None,
+    )
+
+
+def agent_step(
+    state: AgentState,
+    node: str,
+    args: dict[str, str | int | float],
+    detail: str,
+    started: float,
+    llm_calls: int = 0,
+) -> Step:
+    return Step(
+        request_id=state["request_id"],
+        node=node,
+        args={key: value for key, value in args.items() if value != ""},
+        detail=detail,
+        ms=elapsed_ms(started),
+        llm_calls=llm_calls,
+    )
+
+
+def failing_parts(executor: Executor) -> list[str] | None:
+    # None when the sandbox cannot be reached, so callers can tell unknown from healthy.
     try:
         health = executor.sandbox.health()
     except SandboxUnavailable:
-        return []
+        return None
     return sorted(part for part, state in health["components"].items() if state != "ok")
 
 
-def answer(state: AgentState, step: Step, text: str, *later: Step) -> dict[str, Any]:
-    steps = [step, *later]
-    turn = [s for s in state.get("trace", []) if s.request_id == step.request_id]
+def merged(seen: list[str], failing: list[str] | None) -> list[str]:
+    return sorted({*seen, *(failing or [])})
+
+
+def health(failing: list[str] | None) -> str:
+    return "unknown" if failing is None else ", ".join(failing) or "ok"
+
+
+def answer(state: AgentState, text: str, *steps: Step) -> dict[str, Any]:
+    turn = [s for s in state.get("trace", []) if s.request_id == state["request_id"]]
     content = "\n\n".join([text, *notices(state["guard"])]) + footer([*turn, *steps])
     messages = [message for s in steps for message in step_messages(s)]
-    return {"messages": [*messages, AIMessage(content=content)], "trace": steps}
+    return {"messages": [*messages, AIMessage(content=content)], "trace": list(steps)}
 
 
 def notices(report: GuardReport) -> list[str]:
@@ -411,7 +624,7 @@ def notices(report: GuardReport) -> list[str]:
 
 def step_messages(step: Step) -> list[AnyMessage]:
     # The chat UI shows a tool call and its result as a card, which makes a live step log.
-    call_id = f"{step.node}-{step.request_id[:8]}"
+    call_id = f"{step.node}-{uuid.uuid4().hex[:12]}"
     return [
         AIMessage(content="", tool_calls=[{"name": step.node, "args": step.args, "id": call_id}]),
         ToolMessage(
@@ -424,8 +637,8 @@ def question(state: AgentState) -> str:
     return next(m.text for m in reversed(state["messages"]) if isinstance(m, HumanMessage))
 
 
-def shorten(text: str) -> str:
-    return text if len(text) <= SHOWN_CHARS else text[:SHOWN_CHARS] + "..."
+def shorten(text: str, limit: int = SHOWN_CHARS) -> str:
+    return text if len(text) <= limit else text[:limit] + "..."
 
 
 def describe(report: GuardReport) -> str:

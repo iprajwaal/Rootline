@@ -1,0 +1,5 @@
+{
+  "intent": "ask_rca",
+  "confidence": 0.95,
+  "reason": "The user is describing a past incident involving checkout getting slow due to a cache pod eviction, which aligns with asking about a past incident's root cause or what happened."
+}

@@ -1,0 +1,5 @@
+{
+  "intent": "find",
+  "confidence": 0.95,
+  "reason": "The user is explicitly asking for the location of a specific SOP document ('where is the SOP for rotating the payment key')."
+}

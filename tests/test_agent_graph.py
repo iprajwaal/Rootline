@@ -7,16 +7,15 @@ import pytest
 from fake_shop import FakeShop
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.types import Command
 
 from rootline.agent.answer import AskAnswer, LlmAnswer, answer_asker
 from rootline.agent.drafts import AskDraft, Drafter, draft_asker
 from rootline.agent.executor import Executor
-from rootline.agent.fallback import fallback_asker
 from rootline.agent.graph import Graph, Writers, build_graph
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, escape
 from rootline.agent.state import AgentState
+from rootline.agent.troubleshoot import AskConclusion, AskTools, agent_asker, conclusion_asker
 from rootline.agent.understand import Understander, intent_asker
 from rootline.config import Settings
 from rootline.ingest.analysis import Analyzer
@@ -41,8 +40,9 @@ def make_graph(
     settings: Settings,
     ask_answer: AskAnswer | None = None,
     shop: FakeShop | None = None,
-    ask_fallback: AskAnswer | None = None,
     ask_draft: AskDraft | None = None,
+    ask_agent: AskTools | None = None,
+    ask_conclusion: AskConclusion | None = None,
 ) -> Graph:
     llm = build_llm(settings, lambda call: None)
     catalog = analyzer.catalog
@@ -58,7 +58,8 @@ def make_graph(
         Presenter("http://rootline.test", 365, today=lambda: date(2026, 10, 20)),
         Writers(
             ask_answer or answer_asker(llm),
-            ask_fallback or fallback_asker(llm),
+            ask_agent or agent_asker(llm),
+            ask_conclusion or conclusion_asker(llm),
             ask_draft or draft_asker(llm),
         ),
         executor,
@@ -232,12 +233,6 @@ class Chat:
         )
         return state
 
-    def resume(self, decision: dict[str, Any]) -> dict[str, Any]:
-        state: dict[str, Any] = self.graph.invoke(
-            Command(resume={"decisions": [decision]}), self.config
-        )
-        return state
-
 
 @pytest.fixture
 def shop() -> FakeShop:
@@ -255,39 +250,19 @@ def chat(
     return Chat(make_graph(analyzer, search_db_url, offline_settings, shop=shop))
 
 
-def test_action_step_waits_for_approval_in_the_ui_shape(chat: Chat, shop: FakeShop) -> None:
+def test_action_step_is_tried_on_a_copy_and_never_run(chat: Chat, shop: FakeShop) -> None:
     chat.say("steps for db pool")
-    paused = chat.say("run step 4")
 
-    [pending] = paused["__interrupt__"]
-    request = pending.value
-    assert request["action_requests"][0]["name"] == "raise_pool_limit"
-    assert "DB_POOL_MAX=50" in request["action_requests"][0]["args"]["command"]
-    assert request["review_configs"] == [
-        {"action_name": "raise_pool_limit", "allowed_decisions": ["approve", "reject"]}
-    ]
-    assert shop.actions() == []
+    state = chat.say("run step 4")
+    text = reply(state)
 
-
-def test_approved_step_runs_in_the_sandbox_and_is_verified(chat: Chat, shop: FakeShop) -> None:
-    chat.say("steps for db pool")
-    chat.say("run step 4")
-
-    text = reply(chat.resume({"type": "approve"}))
-
+    assert "__interrupt__" not in state
     assert text.startswith("**Step 4 of SOP-DB-001 v1** Raise the pool limit.")
-    assert "Result: expected result met (health is ok again)." in text
-    assert shop.actions() == ["POST /admin/actions/raise_pool_limit"]
-
-
-def test_rejected_step_is_not_run_and_the_command_is_shown(chat: Chat, shop: FakeShop) -> None:
-    chat.say("steps for db pool")
-    chat.say("run step 4")
-
-    text = reply(chat.resume({"type": "reject", "message": "not during the sale"}))
-
-    assert text.startswith("Not run, rejected: not during the sale. Run it yourself:")
-    assert "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50" in text
+    assert "Run: `kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50`" in text
+    assert "From [\\[SOP\\] SOP-DB-001 v1](http://rootline.test/docs/SOP-DB-001)" in text
+    assert "I did not run it: I only try changes on a copy of the system." in text
+    assert "health would be ok after it" in text
+    assert shop.calls[-1] == "POST /admin/actions/raise_pool_limit/dry-run"
     assert shop.actions() == []
 
 

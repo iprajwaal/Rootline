@@ -1,0 +1,5 @@
+{
+  "intent": "troubleshoot",
+  "confidence": 0.95,
+  "reason": "The user is reporting a live problem (disk is full) and explicitly asking for a solution to fix it hands-on."
+}
