@@ -7,21 +7,24 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import interrupt
 
 from rootline.agent.answer import PASSAGES, RCA_DOCS, AskAnswer, Claim, checked, rca_prompt
+from rootline.agent.executor import Executor, SandboxUnavailable, Section
 from rootline.agent.guard import MAX_BYTES, GuardReport, guard
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, footer
-from rootline.agent.state import AgentState, Step
-from rootline.agent.understand import Understander
+from rootline.agent.state import AgentState, Focus, Step
+from rootline.agent.understand import Understander, Understanding
 from rootline.core.context import request_scope
+from rootline.core.models import SopStep
 from rootline.llm.ledger import elapsed_ms
 from rootline.llm.structured import LLMUnavailable
 
 log = logging.getLogger(__name__)
 
 Graph = CompiledStateGraph[AgentState, None, AgentState, AgentState]
-ROUTES = ("find", "suggest", "ask_sop", "ask_rca")
+ROUTES = ("find", "suggest", "ask_sop", "ask_rca", "run_step")
 SHOWN_CHARS = 120
 
 
@@ -30,6 +33,7 @@ def build_graph(
     knowledge: Knowledge,
     presenter: Presenter,
     ask_answer: AskAnswer,
+    executor: Executor,
     tracing: list[BaseCallbackHandler],
 ) -> Graph:
     def guard_input(state: AgentState) -> dict[str, Any]:
@@ -95,12 +99,24 @@ def build_graph(
             detail=f"{rcas} RCAs · {sops} SOPs",
             ms=elapsed_ms(started),
         )
-        return answer(state, step, presenter.suggestions(response))
+        top_sop = response.sop.suggestions[0] if response.sop.suggestions else None
+        top_rca = response.rca.suggestions[0] if response.rca.suggestions else None
+        focus = Focus(
+            sop=top_sop.doc_id if top_sop else None,
+            sop_version=top_sop.version if top_sop else None,
+            rca=top_rca.doc_id if top_rca else None,
+        )
+        return answer(state, step, presenter.suggestions(response)) | {"focus": focus}
 
     def ask_sop(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
-        named = state["understanding"].doc_id
-        query = named if named and named.startswith("SOP") else question(state)
+        found, focus = state["understanding"], state.get("focus", Focus())
+        if found.doc_id and found.doc_id.startswith("SOP"):
+            query = found.doc_id
+        elif focus.sop and not topical(found):
+            query = focus.sop
+        else:
+            query = question(state)
         lane = knowledge.search(query).sop
         hit = lane.hits[0] if lane.hits and not lane.ambiguous else None
         doc = knowledge.document(hit.doc_id) if hit else None
@@ -109,6 +125,7 @@ def build_graph(
         elif hit and doc:
             text = presenter.procedure(doc, hit)
             detail = f"{doc.doc_id} v{doc.version} · {len(doc.steps)} steps from sop_steps"
+            focus = focus.model_copy(update={"sop": doc.doc_id, "sop_version": doc.version})
         else:
             text, detail = "No SOP in the library covers this.", "no SOP found"
         step = Step(
@@ -118,7 +135,7 @@ def build_graph(
             detail=detail,
             ms=elapsed_ms(started),
         )
-        return answer(state, step, text)
+        return answer(state, step, text) | {"focus": focus}
 
     def ask_rca(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -152,7 +169,57 @@ def build_graph(
             ms=elapsed_ms(started),
             llm_calls=llm_calls,
         )
-        return answer(state, step, reply_text)
+        cited = passages[claims[0].sources[0] - 1].doc_id if claims else None
+        rca = cited or (hits[0].doc_id if hits else None)
+        focus = state.get("focus", Focus()).model_copy(update={"rca": rca})
+        return answer(state, step, reply_text) | {"focus": focus}
+
+    def run_step(state: AgentState) -> dict[str, Any]:
+        started = time.perf_counter()
+        found, focus = state["understanding"], state.get("focus", Focus())
+        section: Section = "rollback" if found.rollback else "steps"
+        ordinal = found.step or 0
+        sop_step = None
+        if focus.sop and focus.sop_version:
+            sop_step = executor.step(focus.sop, focus.sop_version, section, ordinal)
+        if not focus.sop or not focus.sop_version:
+            text, detail = "Open an SOP first, for example: steps for db pool.", "no SOP in focus"
+        elif sop_step is None:
+            kind = "rollback step" if found.rollback else "step"
+            text = f"{focus.sop} v{focus.sop_version} has no {kind} {ordinal}."
+            detail = "no such step"
+        elif sop_step.action:
+            # Pauses the run until someone approves or rejects in the chat UI.
+            ok, message = approved(interrupt(approval_request(focus, section, sop_step)))
+            if ok:
+                text, detail = execute(focus.sop, focus.sop_version, section, sop_step)
+            else:
+                reason = f"rejected: {message}" if message else "rejected"
+                text, detail = presenter.run_yourself(sop_step, reason), "rejected"
+        elif sop_step.check_name:
+            # Checks only read, so they run without asking.
+            text, detail = execute(focus.sop, focus.sop_version, section, sop_step)
+        else:
+            text = presenter.run_yourself(sop_step, "this step has no sandbox action")
+            detail = "manual step"
+        step = Step(
+            request_id=state["request_id"],
+            node="run_step",
+            args={"sop": focus.sop or "none", "section": section, "step": ordinal},
+            detail=detail,
+            ms=elapsed_ms(started),
+        )
+        return answer(state, step, text)
+
+    def execute(doc_id: str, version: int, section: Section, sop_step: SopStep) -> tuple[str, str]:
+        try:
+            result = executor.run(doc_id, version, section, sop_step.ordinal)
+        except SandboxUnavailable as error:
+            log.warning("step not run error=%s", error)
+            return presenter.run_yourself(sop_step, "the sandbox is not reachable"), "sandbox down"
+        verdict = {True: "met", False: "not met", None: "nothing to verify"}[result.met]
+        text = presenter.step_result(doc_id, version, section, sop_step, result)
+        return text, f"{result.kind} {result.name} · {verdict}"
 
     builder = StateGraph(AgentState)
     builder.add_node("guard", guard_input)
@@ -161,6 +228,7 @@ def build_graph(
     builder.add_node("suggest", suggest)
     builder.add_node("ask_sop", ask_sop)
     builder.add_node("ask_rca", ask_rca)
+    builder.add_node("run_step", run_step)
     builder.add_node("reply", reply)
     builder.add_edge(START, "guard")
     builder.add_edge("guard", "understand")
@@ -186,6 +254,39 @@ def reply(state: AgentState) -> dict[str, Any]:
         lines.append(f"Could also be: {', '.join(found.alternatives)}.")
     step = Step(request_id=state["request_id"], node="reply", args={}, detail="no route", ms=0)
     return answer(state, step, "\n".join(lines))
+
+
+def topical(found: Understanding) -> bool:
+    return bool(found.doc_id or found.services or found.errors or found.alerts)
+
+
+def approval_request(focus: Focus, section: Section, step: SopStep) -> dict[str, Any]:
+    # The HITLRequest shape agent-chat-ui shows as an approve or reject card. Edits are not
+    # offered: the executor runs the stored action, so an edited command would not be it.
+    name = step.action or ""
+    where = (
+        f"{focus.sop} v{focus.sop_version} {'rollback step' if section == 'rollback' else 'step'}"
+    )
+    return {
+        "action_requests": [
+            {
+                "name": name,
+                "args": {"sop": focus.sop, "step": step.ordinal, "command": step.command or ""},
+                "description": f"{where} {step.ordinal}: {step.instruction}\n"
+                f"Expect: {step.expect or 'not stated'}",
+            }
+        ],
+        "review_configs": [{"action_name": name, "allowed_decisions": ["approve", "reject"]}],
+    }
+
+
+def approved(resume: Any) -> tuple[bool, str]:
+    # The UI resumes with {"decisions": [{"type": "approve"}]}; anything else counts as no.
+    decisions = resume.get("decisions") if isinstance(resume, dict) else None
+    first = decisions[0] if isinstance(decisions, list) and decisions else None
+    if not isinstance(first, dict):
+        return False, ""
+    return first.get("type") == "approve", str(first.get("message") or "")
 
 
 def answer(state: AgentState, step: Step, text: str) -> dict[str, Any]:

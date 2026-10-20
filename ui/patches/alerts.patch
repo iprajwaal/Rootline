@@ -1,0 +1,298 @@
+diff --git a/src/components/thread/history/index.tsx b/src/components/thread/history/index.tsx
+index c2e0083..9b64b01 100644
+--- a/src/components/thread/history/index.tsx
++++ b/src/components/thread/history/index.tsx
+@@ -14,6 +14,7 @@ import {
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { PanelRightOpen, PanelRightClose } from "lucide-react";
+ import { useMediaQuery } from "@/hooks/useMediaQuery";
++import { AlertList } from "../alerts";
+ 
+ function ThreadList({
+   threads,
+@@ -75,12 +76,38 @@ function ThreadHistoryLoading() {
+   );
+ }
+ 
++function HistoryTabs({
++  tab,
++  setTab,
++}: {
++  tab: string;
++  setTab: (tab: string) => void;
++}) {
++  return (
++    <div className="flex w-full gap-2 px-4">
++      {["alerts", "chats"].map((name) => (
++        <Button
++          key={name}
++          size="sm"
++          variant={tab === name ? "default" : "ghost"}
++          onClick={() => setTab(name)}
++        >
++          {name === "alerts" ? "Alerts" : "Chats"}
++        </Button>
++      ))}
++    </div>
++  );
++}
++
+ export default function ThreadHistory() {
+   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
+     "chatHistoryOpen",
+     parseAsBoolean.withDefault(false),
+   );
++  const [tab, setTab] = useQueryState("historyTab", {
++    defaultValue: "alerts",
++  });
+ 
+   const { getThreads, threads, setThreads, threadsLoading, setThreadsLoading } =
+     useThreads();
+@@ -109,11 +136,15 @@ export default function ThreadHistory() {
+               <PanelRightClose className="size-5" />
+             )}
+           </Button>
+-          <h1 className="text-xl font-semibold tracking-tight">
+-            Thread History
+-          </h1>
++          <h1 className="text-xl font-semibold tracking-tight">History</h1>
+         </div>
+-        {threadsLoading ? (
++        <HistoryTabs
++          tab={tab}
++          setTab={setTab}
++        />
++        {tab === "alerts" ? (
++          <AlertList />
++        ) : threadsLoading ? (
+           <ThreadHistoryLoading />
+         ) : (
+           <ThreadList threads={threads} />
+@@ -132,12 +163,20 @@ export default function ThreadHistory() {
+             className="flex lg:hidden"
+           >
+             <SheetHeader>
+-              <SheetTitle>Thread History</SheetTitle>
++              <SheetTitle>History</SheetTitle>
+             </SheetHeader>
+-            <ThreadList
+-              threads={threads}
+-              onThreadClick={() => setChatHistoryOpen((o) => !o)}
++            <HistoryTabs
++              tab={tab}
++              setTab={setTab}
+             />
++            {tab === "alerts" ? (
++              <AlertList onOpen={() => setChatHistoryOpen(false)} />
++            ) : (
++              <ThreadList
++                threads={threads}
++                onThreadClick={() => setChatHistoryOpen((o) => !o)}
++              />
++            )}
+           </SheetContent>
+         </Sheet>
+       </div>
+diff --git a/src/components/thread/index.tsx b/src/components/thread/index.tsx
+index fbb71e7..c914fe7 100644
+--- a/src/components/thread/index.tsx
++++ b/src/components/thread/index.tsx
+@@ -31,6 +31,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
+ import { Label } from "../ui/label";
+ import { Switch } from "../ui/switch";
+ import { GitHubSVG } from "../icons/github";
++import { AlertsButton } from "./alerts";
+ import {
+   Tooltip,
+   TooltipContent,
+@@ -349,7 +350,8 @@ export function Thread() {
+                   </Button>
+                 )}
+               </div>
+-              <div className="absolute top-2 right-4 flex items-center">
++              <div className="absolute top-2 right-4 flex items-center gap-4">
++                <AlertsButton />
+                 <OpenGitHubRepo />
+               </div>
+             </div>
+@@ -396,6 +398,7 @@ export function Thread() {
+               </div>
+ 
+               <div className="flex items-center gap-4">
++                <AlertsButton />
+                 <div className="flex items-center">
+                   <OpenGitHubRepo />
+                 </div>
+diff --git a/src/components/thread/alerts/index.tsx b/src/components/thread/alerts/index.tsx
+new file mode 100644
+index 0000000..1ef8b2f
+--- /dev/null
++++ b/src/components/thread/alerts/index.tsx
+@@ -0,0 +1,166 @@
++"use client";
++
++import { useCallback, useEffect, useState } from "react";
++import { parseAsBoolean, useQueryState } from "nuqs";
++import { BellRing } from "lucide-react";
++import { Button } from "@/components/ui/button";
++import { cn } from "@/lib/utils";
++
++// Rootline's API keeps the alerts; a chat thread starts only when someone opens one.
++const ROOTLINE_API =
++  process.env.NEXT_PUBLIC_ROOTLINE_API_URL || "http://localhost:8000";
++const POLL_MS = 5000;
++
++export type Incident = {
++  id: number;
++  alert_name: string | null;
++  service: string | null;
++  status: string;
++  fire_count: number;
++  created_at: string;
++  resolved_at: string | null;
++  thread_id: string | null;
++  chat_opened: boolean;
++  top_rca: string | null;
++  top_sop: string | null;
++};
++
++export function useIncidents(): Incident[] {
++  const [incidents, setIncidents] = useState<Incident[]>([]);
++
++  useEffect(() => {
++    let stopped = false;
++    const load = () =>
++      fetch(`${ROOTLINE_API}/incidents?status=all&limit=30`)
++        .then((response) => (response.ok ? response.json() : []))
++        .then((rows: Incident[]) => {
++          if (!stopped) setIncidents(rows);
++        })
++        .catch(() => undefined);
++    load();
++    const timer = setInterval(load, POLL_MS);
++    return () => {
++      stopped = true;
++      clearInterval(timer);
++    };
++  }, []);
++
++  return incidents;
++}
++
++function label(incident: Incident): string {
++  if (incident.status !== "open") return "resolved";
++  return incident.chat_opened ? "in chat" : "new";
++}
++
++export function AlertList({ onOpen }: { onOpen?: () => void }) {
++  const incidents = useIncidents();
++  const [, setThreadId] = useQueryState("threadId");
++  const [opening, setOpening] = useState<number | null>(null);
++  const [error, setError] = useState<string | null>(null);
++
++  const open = useCallback(
++    async (incident: Incident) => {
++      setError(null);
++      setOpening(incident.id);
++      try {
++        const response = await fetch(
++          `${ROOTLINE_API}/incidents/${incident.id}/open`,
++          { method: "POST" },
++        );
++        if (!response.ok) {
++          setError("Could not open this alert. Is the agent server running?");
++          return;
++        }
++        const { thread_id } = await response.json();
++        setThreadId(thread_id);
++        onOpen?.();
++      } finally {
++        setOpening(null);
++      }
++    },
++    [setThreadId, onOpen],
++  );
++
++  if (!incidents.length) {
++    return <p className="px-4 text-sm text-gray-500">No alerts yet.</p>;
++  }
++
++  return (
++    <div className="flex h-full w-full flex-col gap-2 overflow-y-auto px-3">
++      {error && <p className="text-sm text-red-600">{error}</p>}
++      {incidents.map((incident) => (
++        <button
++          key={incident.id}
++          onClick={() => open(incident)}
++          disabled={opening !== null}
++          className={cn(
++            "w-full rounded-md border px-3 py-2 text-left hover:bg-gray-50",
++            incident.status === "open"
++              ? "border-red-300"
++              : "border-gray-200 opacity-70",
++          )}
++        >
++          <div className="flex items-center justify-between gap-2">
++            <span className="truncate text-sm font-medium">
++              {incident.alert_name}
++            </span>
++            <span
++              className={cn(
++                "shrink-0 rounded-full px-2 text-xs",
++                label(incident) === "new"
++                  ? "bg-red-600 text-white"
++                  : "bg-gray-100 text-gray-600",
++              )}
++            >
++              {opening === incident.id ? "opening" : label(incident)}
++            </span>
++          </div>
++          <p className="text-xs text-gray-500">
++            {incident.service} ·{" "}
++            {new Date(incident.created_at).toLocaleTimeString()}
++            {incident.fire_count > 1 ? ` · fired ${incident.fire_count} times` : ""}
++          </p>
++          {incident.top_sop && (
++            <p className="truncate text-xs text-gray-600">{incident.top_sop}</p>
++          )}
++          {incident.top_rca && (
++            <p className="truncate text-xs text-gray-600">{incident.top_rca}</p>
++          )}
++        </button>
++      ))}
++    </div>
++  );
++}
++
++export function AlertsButton() {
++  const incidents = useIncidents();
++  const [, setChatHistoryOpen] = useQueryState(
++    "chatHistoryOpen",
++    parseAsBoolean.withDefault(false),
++  );
++  const [, setHistoryTab] = useQueryState("historyTab");
++  const waiting = incidents.filter(
++    (incident) => incident.status === "open" && !incident.chat_opened,
++  ).length;
++
++  return (
++    <Button
++      variant="outline"
++      size="sm"
++      className="gap-2"
++      onClick={() => {
++        setHistoryTab("alerts");
++        setChatHistoryOpen(true);
++      }}
++    >
++      <BellRing className="size-4" />
++      Alerts
++      {waiting > 0 && (
++        <span className="rounded-full bg-red-600 px-2 text-xs text-white">
++          {waiting}
++        </span>
++      )}
++    </Button>
++  );
++}

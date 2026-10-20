@@ -3,16 +3,26 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from functools import cache
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import psycopg
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from rootline.config import Settings
 from rootline.core.context import REQUEST_ID
 from rootline.core.logs import configure_logging
-from rootline.incidents import AlertmanagerWebhook, IncidentResult, Incidents
+from rootline.incidents import (
+    AgentUnavailable,
+    AlertmanagerWebhook,
+    IncidentResult,
+    Incidents,
+    IncidentView,
+    open_chat,
+    recent_incidents,
+    thread_opener,
+)
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
@@ -28,6 +38,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="rootline", lifespan=lifespan)
+# The chat UI runs on its own port and calls the alert endpoints from the browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=Settings().ui_origins,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.middleware("http")
@@ -129,6 +146,28 @@ def receive_alerts(
 ) -> list[IncidentResult]:
     with psycopg.connect(settings.database_url, autocommit=True) as conn:
         return Incidents(conn, suggester(conn, analyzer)).receive(webhook)
+
+
+@app.get("/incidents")
+def list_incidents(
+    settings: SettingsDep,
+    status: Literal["open", "all"] = "open",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[IncidentView]:
+    with psycopg.connect(settings.database_url) as conn:
+        return recent_incidents(conn, status == "all", limit)
+
+
+@app.post("/incidents/{incident_id}/open")
+def open_incident_chat(incident_id: int, settings: SettingsDep) -> dict[str, str]:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        try:
+            thread_id = open_chat(conn, incident_id, thread_opener(settings.agent_url))
+        except AgentUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+    if thread_id is None:
+        raise HTTPException(status_code=404, detail=f"no incident {incident_id}")
+    return {"thread_id": thread_id}
 
 
 def suggester(conn: psycopg.Connection[Any], analyzer: Analyzer) -> Suggester:

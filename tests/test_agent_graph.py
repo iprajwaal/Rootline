@@ -4,9 +4,13 @@ from typing import Any, cast
 
 import psycopg
 import pytest
+from fake_shop import FakeShop
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
 
 from rootline.agent.answer import AskAnswer, LlmAnswer, answer_asker
+from rootline.agent.executor import Executor
 from rootline.agent.graph import Graph, build_graph
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter, escape
@@ -34,13 +38,22 @@ def make_graph(
     search_db_url: str,
     settings: Settings,
     ask_answer: AskAnswer | None = None,
+    shop: FakeShop | None = None,
 ) -> Graph:
     llm = build_llm(settings, lambda call: None)
+    catalog = analyzer.catalog
+    executor = Executor(
+        search_db_url,
+        (shop or FakeShop()).client(),
+        frozenset(catalog.actions),
+        frozenset(catalog.checks),
+    )
     return build_graph(
-        Understander(analyzer.catalog, intent_asker(llm)),
-        Knowledge(search_db_url, analyzer.embedder, analyzer.catalog),
+        Understander(catalog, intent_asker(llm)),
+        Knowledge(search_db_url, analyzer.embedder, catalog),
         Presenter("http://rootline.test", 365, today=lambda: date(2026, 10, 20)),
         ask_answer or answer_asker(llm),
+        executor,
         [],
     )
 
@@ -196,3 +209,102 @@ def test_rca_question_without_the_llm_shows_sections_word_for_word(
     stored = "\n".join(row[0] for row in search_db.execute("select body from chunks_rca"))
     assert quoted and all(line in stored for line in quoted)
     assert state["trace"][-1].llm_calls == 0
+
+
+class Chat:
+    # One thread with memory, the way the agent server runs the graph.
+    def __init__(self, graph: Graph) -> None:
+        self.graph = graph.copy(update={"checkpointer": InMemorySaver()})
+        self.config: Any = {"configurable": {"thread_id": "t1"}}
+
+    def say(self, text: str) -> dict[str, Any]:
+        state: dict[str, Any] = self.graph.invoke(
+            {"messages": [HumanMessage(content=text)]}, self.config
+        )
+        return state
+
+    def resume(self, decision: dict[str, Any]) -> dict[str, Any]:
+        state: dict[str, Any] = self.graph.invoke(
+            Command(resume={"decisions": [decision]}), self.config
+        )
+        return state
+
+
+@pytest.fixture
+def shop() -> FakeShop:
+    return FakeShop()
+
+
+@pytest.fixture
+def chat(
+    search_db: psycopg.Connection,
+    search_db_url: str,
+    analyzer: Analyzer,
+    offline_settings: Settings,
+    shop: FakeShop,
+) -> Chat:
+    return Chat(make_graph(analyzer, search_db_url, offline_settings, shop=shop))
+
+
+def test_action_step_waits_for_approval_in_the_ui_shape(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+    paused = chat.say("run step 4")
+
+    [pending] = paused["__interrupt__"]
+    request = pending.value
+    assert request["action_requests"][0]["name"] == "raise_pool_limit"
+    assert "DB_POOL_MAX=50" in request["action_requests"][0]["args"]["command"]
+    assert request["review_configs"] == [
+        {"action_name": "raise_pool_limit", "allowed_decisions": ["approve", "reject"]}
+    ]
+    assert shop.actions() == []
+
+
+def test_approved_step_runs_in_the_sandbox_and_is_verified(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+    chat.say("run step 4")
+
+    text = reply(chat.resume({"type": "approve"}))
+
+    assert text.startswith("**Step 4 of SOP-DB-001 v1** Raise the pool limit.")
+    assert "Result: expected result met (health is ok again)." in text
+    assert shop.actions() == ["POST /admin/actions/raise_pool_limit"]
+
+
+def test_rejected_step_is_not_run_and_the_command_is_shown(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+    chat.say("run step 4")
+
+    text = reply(chat.resume({"type": "reject", "message": "not during the sale"}))
+
+    assert text.startswith("Not run, rejected: not during the sale. Run it yourself:")
+    assert "kubectl -n shop set env deploy/orders-api DB_POOL_MAX=50" in text
+    assert shop.actions() == []
+
+
+def test_read_only_check_runs_without_asking(chat: Chat, shop: FakeShop) -> None:
+    chat.say("steps for db pool")
+
+    state = chat.say("run step 2")
+
+    assert "__interrupt__" not in state
+    assert "count 100 of 100" in reply(state)
+    assert shop.actions() == []
+
+
+def test_run_step_without_an_open_sop_asks_for_one(chat: Chat) -> None:
+    assert reply(chat.say("run step 4")).startswith("Open an SOP first")
+
+
+def test_step_that_does_not_exist_is_reported(chat: Chat) -> None:
+    chat.say("steps for db pool")
+
+    assert reply(chat.say("run step 9")).startswith("SOP-DB-001 v1 has no step 9.")
+
+
+def test_steps_after_an_alert_come_from_the_suggested_sop(chat: Chat) -> None:
+    chat.say("[FIRING:1] OrdersDbPoolExhausted orders-api")
+
+    text = reply(chat.say("show the steps"))
+
+    assert text.startswith("**\\[SOP\\] SOP-DB-001 · v1**")

@@ -33,3 +33,9 @@ class Settings(BaseSettings):
     # Older documents are still shown, with a note to check they still hold.
     stale_after_days: int = 365
     log_level: str = "info"
+    # The sandbox approved SOP steps run against, and the agent server alerts open threads on.
+    shoplite_url: str = "http://localhost:8080"
+    agent_url: str = "http://localhost:2024"
+    action_timeout_s: float = 30.0
+    # Browser origins allowed to call the API, such as the chat UI.
+    ui_origins: list[str] = ["http://localhost:3000"]

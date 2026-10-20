@@ -11,7 +11,9 @@ from rootline.llm.structured import LLMUnavailable, StructuredLLM
 from rootline.retrieval.issue import FRAME
 from rootline.retrieval.search import DOC_ID
 
-Intent = Literal["find", "suggest", "ask_sop", "ask_rca", "unclear"]
+# The LLM only chooses between these; "run step N" is always caught by the rules.
+AskedIntent = Literal["find", "suggest", "ask_sop", "ask_rca", "unclear"]
+Intent = Literal["find", "suggest", "ask_sop", "ask_rca", "unclear", "run_step"]
 Lane = Literal["rca", "sop", "both"]
 
 # Below this the rules are guessing, so the LLM is asked. When the LLM is unsure too or
@@ -61,6 +63,9 @@ LOG_LINE = re.compile(
 )
 ALERT_MARKER = re.compile(r"(?i)\[FIRING:\d+\]|\balertname\s*[=:]|\bstatus\s*[=:]\s*\"?firing\b")
 MESSAGE_TAG = re.compile(r"(?i)</?message>")
+RUN_STEP = re.compile(
+    r"(?i)\b(?:run|execute|apply|do)\s+(?:the\s+)?(rollback\s+)?step\s*#?\s*(\d+)\b"
+)
 
 
 class Understanding(BaseModel):
@@ -74,10 +79,12 @@ class Understanding(BaseModel):
     services: list[str] = []
     alerts: list[str] = []
     errors: list[str] = []
+    step: int | None = None
+    rollback: bool = False
 
 
 class LlmIntent(BaseModel):
-    intent: Intent
+    intent: AskedIntent
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str
 
@@ -94,6 +101,7 @@ class Signals:
     services: list[str]
     cues: frozenset[str]
     lane_words: frozenset[str]
+    step: tuple[bool, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -140,6 +148,7 @@ def read_signals(text: str, catalog: Catalog) -> Signals:
         pasted.append("log lines")
     if ALERT_MARKER.search(text):
         pasted.append("alert")
+    step = RUN_STEP.search(text)
     return Signals(
         doc_id=doc_id.group().upper() if doc_id else None,
         pasted=pasted,
@@ -148,6 +157,7 @@ def read_signals(text: str, catalog: Catalog) -> Signals:
         services=sorted(named_services(text, catalog.services)),
         cues=frozenset(name for name, cue in CUES.items() if cue.search(text)),
         lane_words=frozenset(lane for lane, words in LANE_WORDS.items() if words.search(text)),
+        step=(bool(step.group(1)), int(step.group(2))) if step else None,
     )
 
 
@@ -157,6 +167,11 @@ def searchable(signals: Signals) -> bool:
 
 def rule_guess(signals: Signals) -> Guess:
     cues = signals.cues
+    if signals.step:
+        rollback, ordinal = signals.step
+        return Guess(
+            "run_step", 0.95, f"asks to run {'rollback ' if rollback else ''}step {ordinal}"
+        )
     if signals.doc_id:
         kind = signals.doc_id.split("-")[0]
         if kind == "SOP" and "how" in cues:
@@ -196,6 +211,8 @@ def understanding(guess: Guess, signals: Signals, method: Literal["rules", "llm"
         services=signals.services,
         alerts=signals.alerts,
         errors=signals.errors,
+        step=signals.step[1] if signals.step else None,
+        rollback=bool(signals.step and signals.step[0]),
     )
 
 
@@ -213,8 +230,8 @@ def unsure(
 
 
 def lane_for(intent: Intent, signals: Signals) -> Lane | None:
-    if intent in ("ask_sop", "ask_rca"):
-        return "sop" if intent == "ask_sop" else "rca"
+    if intent in ("ask_sop", "ask_rca", "run_step"):
+        return "rca" if intent == "ask_rca" else "sop"
     if intent == "suggest":
         return "both"
     if intent != "find":

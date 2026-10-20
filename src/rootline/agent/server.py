@@ -1,4 +1,7 @@
+import httpx
+
 from rootline.agent.answer import answer_asker
+from rootline.agent.executor import Executor, ShopLite
 from rootline.agent.graph import Graph, build_graph
 from rootline.agent.knowledge import Knowledge
 from rootline.agent.present import Presenter
@@ -21,6 +24,14 @@ def default_graph(settings: Settings) -> Graph:
         Knowledge(settings.database_url, embedder, catalog),
         Presenter(settings.public_api_url, settings.stale_after_days),
         answer_asker(llm),
+        Executor(
+            settings.database_url,
+            ShopLite(
+                httpx.Client(base_url=settings.shoplite_url, timeout=settings.action_timeout_s)
+            ),
+            frozenset(catalog.actions),
+            frozenset(catalog.checks),
+        ),
         tracing_callbacks(settings),
     )
 

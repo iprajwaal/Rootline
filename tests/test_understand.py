@@ -6,7 +6,7 @@ import pytest
 
 from rootline.agent.guard import guard
 from rootline.agent.understand import (
-    Intent,
+    AskedIntent,
     LlmIntent,
     Understander,
     intent_asker,
@@ -35,7 +35,7 @@ def cascade(catalog: Catalog, offline_settings: Settings) -> Understander:
     return Understander(catalog, intent_asker(llm))
 
 
-def answering(intent: Intent, confidence: float = 0.9) -> Any:
+def answering(intent: AskedIntent, confidence: float = 0.9) -> Any:
     def ask(prompt: str) -> LlmIntent:
         return LlmIntent(intent=intent, confidence=confidence, reason="fake")
 
@@ -151,3 +151,28 @@ def test_message_cannot_close_the_prompt_delimiter() -> None:
 
     assert prompt.count("</message>") == 1
     assert prompt.count("<message>") == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "step", "rollback"),
+    [
+        ("run step 4", 4, False),
+        ("please run the rollback step 1", 1, True),
+        ("execute step #2", 2, False),
+    ],
+)
+def test_run_step_is_caught_by_the_rules_with_its_number(
+    catalog: Catalog, text: str, step: int, rollback: bool
+) -> None:
+    found = Understander(catalog, never).understand(text)
+
+    assert (found.intent, found.lane, found.step, found.rollback) == (
+        "run_step",
+        "sop",
+        step,
+        rollback,
+    )
+
+
+def test_a_question_about_a_step_is_not_a_request_to_run_it(catalog: Catalog) -> None:
+    assert Understander(catalog, never).understand("what does step 4 do?").intent == "ask_sop"
