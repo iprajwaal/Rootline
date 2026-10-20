@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments scenarios
+.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments scenarios reset
 
 install:
 	uv sync
@@ -53,3 +53,7 @@ experiments:
 # Scenarios 1-8 and 1b against the running stack (make demo first)
 scenarios:
 	uv run python -m rootline.scenarios
+
+# Makes ShopLite healthy again between demo runs; its open alerts resolve within 5 s
+reset:
+	curl -s -X POST localhost:8080/reset

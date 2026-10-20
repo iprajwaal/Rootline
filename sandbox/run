@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Paste a command from an SOP after this, for example:
+#   ./sandbox/run kubectl -n shop exec deploy/orders-api -- df -h /var/lib/shoplite
+cd "$(dirname "$0")/.." && exec uv run --quiet python -m rootline.sandbox_cli "$@"
