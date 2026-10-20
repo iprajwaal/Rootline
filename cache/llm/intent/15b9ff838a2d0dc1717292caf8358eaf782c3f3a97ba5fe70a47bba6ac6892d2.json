@@ -1,0 +1,5 @@
+{
+  "intent": "unclear",
+  "confidence": 0.9,
+  "reason": "The request asks for both a root cause (ask_rca) and rollback steps (ask_sop), which mixes several asks according to the unclear intent guidelines."
+}

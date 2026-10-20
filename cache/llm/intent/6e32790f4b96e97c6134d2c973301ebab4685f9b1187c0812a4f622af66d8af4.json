@@ -1,0 +1,5 @@
+{
+  "intent": "suggest",
+  "confidence": 0.95,
+  "reason": "The engineer is describing a live problem with a service (Orders API crash loop after deploy) and needs immediate troubleshooting or resolution help."
+}

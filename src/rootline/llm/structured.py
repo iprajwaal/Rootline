@@ -36,6 +36,7 @@ class StructuredLLM:
     prices: Prices
     timeout_s: float
     max_retries: int
+    vertexai: bool = False
     tracing: tuple[BaseCallbackHandler, ...] = ()
 
     def ask[T: BaseModel](self, task: str, prompt: str, schema: type[T], prompt_version: str) -> T:
@@ -78,6 +79,7 @@ class StructuredLLM:
             api_key=self.api_key,
             timeout=self.timeout_s,
             max_retries=self.max_retries,
+            vertexai=self.vertexai,
             callbacks=[LedgerCallback(self.record, self.model, self.prices)],
         )
 
@@ -112,5 +114,6 @@ def build_llm(settings: Settings, record: RecordCall) -> StructuredLLM:
         prices=Prices(settings.llm_input_usd_per_mtok, settings.llm_output_usd_per_mtok),
         timeout_s=settings.llm_timeout_s,
         max_retries=settings.llm_max_retries,
+        vertexai=settings.llm_vertexai,
         tracing=tuple(tracing_callbacks(settings)),
     )

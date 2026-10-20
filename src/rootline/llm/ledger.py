@@ -1,7 +1,8 @@
 import logging
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
@@ -127,6 +128,15 @@ def usage(response: LLMResult) -> tuple[int, int]:
 
 def request_id() -> str:
     return REQUEST_ID.get() or uuid.uuid4().hex
+
+
+@contextmanager
+def request_scope(request: str) -> Iterator[None]:
+    token = REQUEST_ID.set(request)
+    try:
+        yield
+    finally:
+        REQUEST_ID.reset(token)
 
 
 def elapsed_ms(started: float) -> int:

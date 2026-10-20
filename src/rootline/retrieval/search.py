@@ -9,6 +9,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel
 
+from rootline.catalog import named_services
 from rootline.ingest.embedding import Embedder, vector_literal
 
 Lane = Literal["rca", "sop"]
@@ -198,15 +199,7 @@ class Searcher:
         return SearchResponse(query=query, mode="hybrid", rca=lanes["rca"], sop=lanes["sop"])
 
     def named_services(self, query: str) -> set[str]:
-        text = query.lower()
-        return {
-            name
-            for name, aliases in self.services.items()
-            if any(
-                re.search(rf"(?<![\w-]){re.escape(term.lower())}(?![\w-])", text)
-                for term in [name, *aliases]
-            )
-        }
+        return named_services(query, self.services)
 
     def lane(self, lane: Lane, vector: str, evidence: "Evidence") -> LaneResult:
         semantic = self.rows(SEMANTIC, {"v": vector, "t": lane, "n": CANDIDATES})

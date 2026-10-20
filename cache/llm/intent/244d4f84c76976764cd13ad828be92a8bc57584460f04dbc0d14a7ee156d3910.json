@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 1.0,
+  "reason": "The user is explicitly asking for the steps contained within a specific SOP document."
+}

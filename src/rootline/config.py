@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     embed_model: str = "BAAI/bge-small-en-v1.5"
     model_cache_dir: Path = Path("data/models")
     google_api_key: str = ""
+    # A Vertex AI API key calls the same Gemini models through Vertex instead of the
+    # Gemini API. The cache does not care which one answered.
+    llm_vertexai: bool = False
     llm_small_model: str = "gemini-3.5-flash-lite"
     llm_cache_dir: Path = Path("cache/llm")
     llm_timeout_s: float = 30.0

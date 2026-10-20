@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 0.95,
+  "reason": "The user is asking for steps to safely perform an action (restart the cache), which corresponds to looking up a Standard Operating Procedure."
+}

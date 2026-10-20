@@ -1,0 +1,5 @@
+{
+  "intent": "ask_sop",
+  "confidence": 1.0,
+  "reason": "The user is asking how to perform a specific procedure (rolling back a bad config deploy), which aligns with the ask_sop intent."
+}
