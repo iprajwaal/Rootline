@@ -1,0 +1,84 @@
+{"id": "q040", "kind": "alert", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 83, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q042", "kind": "alert", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 66, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q038", "kind": "alert", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 70, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q041", "kind": "alert", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 69, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q039", "kind": "alert", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 80, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q043", "kind": "alert", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 67, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q073", "kind": "ambiguous", "origin": "greenfield", "truth": "find", "route": "find", "ms": 52, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q114", "kind": "ambiguous", "origin": "greenfield", "truth": "find", "route": "find", "ms": 51, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q113", "kind": "ambiguous", "origin": "greenfield", "truth": "find", "route": "ask_sop", "ms": 45, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q056", "kind": "chat_rca", "origin": "brownfield", "truth": "ask_rca", "route": "ask_rca", "ms": 61, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": false}
+{"id": "q109", "kind": "chat_rca", "origin": "brownfield", "truth": "ask_rca", "route": "ask_rca", "ms": 63, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q055", "kind": "chat_rca", "origin": "brownfield", "truth": "ask_rca", "route": "ask_rca", "ms": 63, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q108", "kind": "chat_rca", "origin": "brownfield", "truth": "ask_rca", "route": "ask_rca", "ms": 63, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q050", "kind": "chat_rca", "origin": "greenfield", "truth": "ask_rca", "route": "ask_rca", "ms": 60, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q049", "kind": "chat_rca", "origin": "greenfield", "truth": "ask_rca", "route": "ask_rca", "ms": 70, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q052", "kind": "chat_rca", "origin": "greenfield", "truth": "ask_rca", "route": "ask_rca", "ms": 67, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q057", "kind": "chat_rca", "origin": "greenfield", "truth": "ask_rca", "route": "ask_rca", "ms": 65, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1, "answered": true, "citations_valid": true, "cites_expected": true}
+{"id": "q112", "kind": "chat_sop", "origin": "greenfield", "truth": "ask_sop", "route": "ask_sop", "ms": 45, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": null}
+{"id": "q062", "kind": "chat_sop", "origin": "greenfield", "truth": "ask_sop", "route": "ask_sop", "ms": 78, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q064", "kind": "chat_sop", "origin": "brownfield", "truth": "ask_sop", "route": "ask_sop", "ms": 121, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q063", "kind": "chat_sop", "origin": "brownfield", "truth": "ask_sop", "route": "ask_sop", "ms": 56, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q061", "kind": "chat_sop", "origin": "greenfield", "truth": "ask_sop", "route": "ask_sop", "ms": 43, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": null}
+{"id": "q059", "kind": "chat_sop", "origin": "greenfield", "truth": "ask_sop", "route": "ask_sop", "ms": 53, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q111", "kind": "chat_sop", "origin": "brownfield", "truth": "ask_sop", "route": "ask_sop", "ms": 59, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q058", "kind": "chat_sop", "origin": "greenfield", "truth": "ask_sop", "route": "ask_sop", "ms": 62, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0, "step_exact": true}
+{"id": "q030", "kind": "description", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q089", "kind": "description", "origin": "brownfield", "truth": "find", "route": "ask_sop", "ms": 43, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q088", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 28, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q092", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 29, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q091", "kind": "description", "origin": "brownfield", "truth": "find", "route": "find", "ms": 46, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q093", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 29, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q084", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 28, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q032", "kind": "description", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 33, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q036", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 31, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q085", "kind": "description", "origin": "brownfield", "truth": "find", "route": "ask_rca", "ms": 69, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q034", "kind": "description", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 34, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q095", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q037", "kind": "description", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 29, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q031", "kind": "description", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 29, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q025", "kind": "error", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 65, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q026", "kind": "error", "origin": "greenfield", "truth": "suggest", "route": "unclear", "ms": 34, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q028", "kind": "error", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 76, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q024", "kind": "error", "origin": "greenfield", "truth": "suggest", "route": "unclear", "ms": 32, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q021", "kind": "error", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 71, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q102", "kind": "error", "origin": "brownfield", "truth": "suggest", "route": "unclear", "ms": 77, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q022", "kind": "error", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 67, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q104", "kind": "error", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 65, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q029", "kind": "error", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 68, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q067", "kind": "follow_up", "origin": "none", "truth": "ask_sop", "route": "ask_sop", "ms": 39, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q068", "kind": "follow_up", "origin": "none", "truth": "ask_rca", "route": "ask_rca", "ms": 45, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q006", "kind": "id", "origin": "brownfield", "truth": "find", "route": "find", "ms": 32, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q005", "kind": "id", "origin": "brownfield", "truth": "find", "route": "find", "ms": 31, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q002", "kind": "id", "origin": "greenfield", "truth": "find", "route": "find", "ms": 31, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q007", "kind": "id", "origin": "greenfield", "truth": "find", "route": "find", "ms": 30, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q003", "kind": "id", "origin": "greenfield", "truth": "find", "route": "find", "ms": 30, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q077", "kind": "no_answer", "origin": "none", "truth": "suggest", "route": "suggest", "ms": 20118, "llm_calls": 7, "input_tokens": 8022, "output_tokens": 278, "cost": 0.003102, "cached_calls": 0}
+{"id": "q078", "kind": "no_answer", "origin": "none", "truth": "suggest", "route": "suggest", "ms": 76, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q117", "kind": "no_answer", "origin": "none", "truth": "ask_sop", "route": "ask_sop", "ms": 44, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q080", "kind": "no_answer", "origin": "none", "truth": "ask_rca", "route": "ask_rca", "ms": 50, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q082", "kind": "no_answer", "origin": "none", "truth": "find", "route": "unclear", "ms": 31, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q083", "kind": "no_answer", "origin": "none", "truth": "find", "route": "unclear", "ms": 31, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q079", "kind": "no_answer", "origin": "none", "truth": "suggest", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q115", "kind": "no_answer", "origin": "none", "truth": "find", "route": "ask_sop", "ms": 51, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q076", "kind": "no_answer", "origin": "none", "truth": "ask_sop", "route": "ask_sop", "ms": 51, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q020", "kind": "service", "origin": "brownfield", "truth": "find", "route": "find", "ms": 63, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q019", "kind": "service", "origin": "brownfield", "truth": "find", "route": "find", "ms": 42, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q017", "kind": "service", "origin": "greenfield", "truth": "find", "route": "find", "ms": 63, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q098", "kind": "service", "origin": "greenfield", "truth": "find", "route": "find", "ms": 66, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q097", "kind": "service", "origin": "greenfield", "truth": "find", "route": "find", "ms": 51, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q018", "kind": "service", "origin": "greenfield", "truth": "find", "route": "find", "ms": 52, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q045", "kind": "stack_trace", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 85, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q046", "kind": "stack_trace", "origin": "brownfield", "truth": "suggest", "route": "suggest", "ms": 74, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q044", "kind": "stack_trace", "origin": "greenfield", "truth": "suggest", "route": "suggest", "ms": 81, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q011", "kind": "title", "origin": "greenfield", "truth": "find", "route": "ask_sop", "ms": 46, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q010", "kind": "title", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 33, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q008", "kind": "title", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q014", "kind": "title", "origin": "brownfield", "truth": "find", "route": "unclear", "ms": 29, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q009", "kind": "title", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q101", "kind": "title", "origin": "brownfield", "truth": "find", "route": "suggest", "ms": 86, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 0}
+{"id": "q015", "kind": "title", "origin": "greenfield", "truth": "find", "route": "unclear", "ms": 30, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q100", "kind": "title", "origin": "brownfield", "truth": "find", "route": "find", "ms": 51, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q070", "kind": "vague", "origin": "none", "truth": "unclear", "route": "unclear", "ms": 27, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q071", "kind": "vague", "origin": "none", "truth": "troubleshoot", "route": "unclear", "ms": 27, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}
+{"id": "q069", "kind": "vague", "origin": "none", "truth": "unclear", "route": "unclear", "ms": 28, "llm_calls": 1, "input_tokens": 0, "output_tokens": 0, "cost": 0.0, "cached_calls": 1}

@@ -1,0 +1,8 @@
+name: Disk full again, the learned SOP is found directly
+proves: the learning loop, the SOP from scenario 3 is found in under a second with no LLM
+fault: disk_full
+entry: alert
+requires: s3
+steps:
+  - expect: {contains: ["SOP-DISK-", "Steps from"], absent: ["Steps to follow"], llm_calls_max: 0, max_ms: 1000}
+health_after: failing

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Rootline review{% endblock %}
+{% block body %}
+<h1>Review</h1>
+<p class="muted">Drafts are written from incident chats and are never searchable until a person
+approves them here. {{ drafts | selectattr("status", "equalto", "open") | list | length }} drafts
+and {{ items | length }} other items waiting.</p>
+
+<h2>Drafts</h2>
+{% for draft in drafts %}
+<div class="card {{ draft.status }}">
+<p><strong>{{ draft.doc_id }}</strong> [{{ draft.doc_type | upper }}] {{ draft.title }}
+<span class="muted">drafted {{ draft.created_at.strftime("%Y-%m-%d %H:%M") }}</span></p>
+{% if draft.status == "open" %}
+<form method="post" action="/review/{{ draft.id }}/approve"><button>Approve and index</button></form>
+<form method="post" action="/review/{{ draft.id }}/reject"><button>Reject</button></form>
+{% else %}<span class="muted">{{ draft.status }}</span>{% endif %}
+<pre>{{ draft.markdown }}</pre>
+</div>
+{% else %}<p class="muted">No drafts to review.</p>{% endfor %}
+
+<h2>Other items</h2>
+{% for item in items %}
+<div class="card open">
+<p><strong>{{ item.reason | replace("_", " ") }}</strong>
+{% if item.doc_id %}<a href="/docs/{{ item.doc_id }}">{{ item.doc_id }}</a>{% endif %}
+<span class="muted">{{ item.source_key or "" }} · {{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</span></p>
+{% if item.retypable %}
+<p class="muted">The classifier was unsure of the type. Set it:</p>
+<form method="post" action="/review/{{ item.id }}/type"><input type="hidden" name="doc_type" value="rca"><button>It is an RCA</button></form>
+<form method="post" action="/review/{{ item.id }}/type"><input type="hidden" name="doc_type" value="sop"><button>It is an SOP</button></form>
+{% endif %}
+<form method="post" action="/review/{{ item.id }}/done"><button>Mark reviewed</button></form>
+<pre>{{ item.details | tojson(indent=2) }}</pre>
+</div>
+{% else %}<p class="muted">No other items.</p>{% endfor %}
+{% endblock %}

@@ -11,7 +11,7 @@ from rootline.agent.state import PlanStep, Step
 from rootline.agent.troubleshoot import ToolRun
 from rootline.agent.understand import Lane
 from rootline.core.models import SopStep
-from rootline.retrieval.documents import Document
+from rootline.retrieval.documents import Document, anchor
 from rootline.retrieval.passages import Passage
 from rootline.retrieval.references import Reference
 from rootline.retrieval.search import LANES, Hit, LaneResult, SearchResponse
@@ -136,14 +136,18 @@ class Presenter:
         return "\n\n".join(parts)
 
     def cite(self, numbers: list[int], passages: list[Passage]) -> str:
-        return "".join(f"[\\[{n}\\]]({self.link(passages[n - 1].doc_id)})" for n in numbers)
+        return "".join(f"[\\[{n}\\]]({self.section(passages[n - 1])})" for n in numbers)
 
     def source(self, passage: Passage) -> str:
         badge = f"{escape(BADGE['rca'])} {passage.doc_id}"
         return (
-            f"[{badge}]({self.link(passage.doc_id)}) · {escape(passage.section)}"
+            f"[{badge}]({self.section(passage)}) · {escape(passage.section)}"
             f" · {escape(passage.title)}"
         )
+
+    def section(self, passage: Passage) -> str:
+        # Opens the document page at the cited section.
+        return f"{self.link(passage.doc_id)}#{anchor(passage.section)}"
 
     def tried(self, title: str, step: PlanStep, result: StepResult | None) -> str:
         parts = [f"**{escape(title)}** {escape(step.instruction)}"]

@@ -15,6 +15,10 @@ Side = Literal["rca", "sop", ""]
 # Rule scores between these bounds are too close to call and go to the LLM.
 UNSURE_LOW, UNSURE_HIGH = 0.3, 0.7
 REVIEW_BELOW = 0.7
+# An empty or binary file has no real words; even a one-line note has several. Below this
+# it is held for a person, with no model call.
+MIN_WORDS = 5
+REAL_WORD = re.compile(r"\b[a-z]{2,20}\b")
 MIXED_MIN_SHARE = 0.25
 PROMPT_CHARS = 3000
 # Bump when the prompt wording changes. The ledger and traces group calls by it.
@@ -102,6 +106,10 @@ RULES = RuleClassifier()
 def classify(
     doc: ParsedDoc, ask_llm: AskLlm | None = None, first: Classifier = RULES
 ) -> Classification:
+    if len(set(REAL_WORD.findall(doc.text.lower()))) < MIN_WORDS:
+        return Classification(
+            label="unknown", confidence=1.0, method="rules", evidence=["too little text"]
+        )
     template = template_label(doc)
     if template:
         return Classification(

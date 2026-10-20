@@ -1,0 +1,10 @@
+name: Scenario 1 replayed with no LLM key and empty caches
+proves: R7.3, still triages and finds the SOP with no model
+fault: db_pool_exhausted
+entry: chat
+no_model: true
+steps:
+  - say: "[FIRING:1] OrdersDbPoolExhausted orders-api critical"
+    expect: {contains: [SOP-DB-001], llm_calls_max: 0}
+  - say: steps for db pool
+    expect: {contains: ["SOP-DB-001 · v1"], llm_calls_max: 0}

@@ -2,6 +2,7 @@ from pathlib import Path, PurePosixPath
 
 from rootline.core.interfaces import Parser
 from rootline.core.models import ParsedDoc
+from rootline.core.text import printable_all
 from rootline.ingest.parsers import (
     docx_doc,
     email_doc,
@@ -36,7 +37,7 @@ def parse_bytes(data: bytes, source_key: str) -> ParsedDoc:
         raise UnsupportedFormat(
             f"no parser for {suffix or 'a file without extension'}: {source_key}"
         )
-    return parser(data, source_key)
+    return ParsedDoc.model_validate(printable_all(parser(data, source_key).model_dump()))
 
 
 def parse_file(path: Path) -> ParsedDoc:

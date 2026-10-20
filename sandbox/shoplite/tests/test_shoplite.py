@@ -110,18 +110,39 @@ def test_watchdog_posts_firing_once_then_resolved(shop: Shop) -> None:
 
     asyncio.run(run())
 
-    assert [payload["status"] for payload in sent] == ["firing", "resolved"]
-    [alert] = sent[0]["alerts"]  # type: ignore[misc]
-    assert alert["labels"]["alertname"] == "OrdersDbPoolExhausted"
-    assert alert["fingerprint"] == sent[1]["alerts"][0]["fingerprint"]  # type: ignore[index]
+    pool = [p for p in sent if p["alerts"][0]["labels"]["alertname"] == "OrdersDbPoolExhausted"]  # type: ignore[index]
+    assert [payload["status"] for payload in pool] == ["firing", "resolved"]
+    assert pool[0]["alerts"][0]["fingerprint"] == pool[1]["alerts"][0]["fingerprint"]  # type: ignore[index]
+    # The other faults are announced once as resolved on the first tick, and never again.
+    others = [p for p in sent if p not in pool]
+    assert len(others) == len(shop.faults) - 1 and {p["status"] for p in others} == {"resolved"}
+
+
+def test_a_restarted_watchdog_resolves_alerts_it_never_saw_firing(shop: Shop) -> None:
+    sent: list[dict[str, object]] = []
+
+    def receive(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200)
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(receive)) as http:
+            await Watchdog(shop, "http://rootline/incidents", http).tick()
+
+    asyncio.run(run())
+
+    names = {p["alerts"][0]["labels"]["alertname"] for p in sent}  # type: ignore[index]
+    assert {p["status"] for p in sent} == {"resolved"} and "OrdersApiDiskFull" in names
 
 
 def test_undelivered_alert_is_sent_again_on_the_next_tick(shop: Shop) -> None:
-    calls: list[int] = []
+    disk: list[int] = []
 
     def flaky(request: httpx.Request) -> httpx.Response:
-        calls.append(1)
-        return httpx.Response(503 if len(calls) == 1 else 200)
+        if json.loads(request.content)["alerts"][0]["labels"]["alertname"] != "OrdersApiDiskFull":
+            return httpx.Response(200)
+        disk.append(1)
+        return httpx.Response(503 if len(disk) == 1 else 200)
 
     async def run() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(flaky)) as http:
@@ -133,4 +154,4 @@ def test_undelivered_alert_is_sent_again_on_the_next_tick(shop: Shop) -> None:
 
     asyncio.run(run())
 
-    assert len(calls) == 2
+    assert len(disk) == 2

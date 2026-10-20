@@ -1,0 +1,15 @@
+name: Disk full with no document, fixed and written up
+proves: R3.4 and the learning loop, the agent investigates and tests on a copy, then drafts
+fault: disk_full
+entry: chat
+forget_learned: true
+steps:
+  - say: "OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'"
+    expect: {contains: ["Steps to follow", "Tried on a copy", "clear_tmp", "nothing was changed"]}
+  - say: what does step 2 do and is it safe?
+    expect: {absent: ["Understood as unclear"]}
+  - act: clear_tmp
+  - say: done
+    expect: {contains: ["Health is ok now", "SOP-DISK-", "(new)"], llm_calls_max: 1}
+review: approve
+health_after: ok

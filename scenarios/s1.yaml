@@ -1,0 +1,16 @@
+name: DB connection pool exhausted, from the alert
+proves: R3 and R4, alert entry, SOP and RCA given directly, nothing run by Rootline
+fault: db_pool_exhausted
+entry: alert
+steps:
+  - expect: {contains: [RCA-2025-014, SOP-DB-001, "Steps from"], llm_calls_max: 0}
+  - say: can you give me commands to solve this now?
+    expect: {contains: ["SOP-DB-001 · v"], llm_calls_max: 0}
+  - say: run step 4
+    expect: {contains: ["I did not run it", "health would be ok after it"], llm_calls_max: 0}
+  - act: raise_pool_limit
+  - say: done
+    expect: {contains: ["Health is ok now", "SOP-DB-001 (update to v"], llm_calls_max: 1}
+# The library stays as it is between runs.
+review: reject
+health_after: ok

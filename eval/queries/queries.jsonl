@@ -1,0 +1,118 @@
+{"id": "q001", "text": "SOP-DB-001", "kind": "id", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q002", "text": "open sop-cache-001", "kind": "id", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q003", "text": "show me RCA-2025-014", "kind": "id", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": []}
+{"id": "q004", "text": "rca-2026-007 please", "kind": "id", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": []}
+{"id": "q005", "text": "SOP-B-A7F0F4", "kind": "id", "intent": "find", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q006", "text": "RCA-B-8BF782", "kind": "id", "intent": "find", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": []}
+{"id": "q007", "text": "SOP-QUEUE-002", "kind": "id", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q008", "text": "Orders API outage from exhausted database connection pool", "kind": "title", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q009", "text": "Slow checkout while the cache was down", "kind": "title", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q010", "text": "Orders API crash loop after deploy with missing config", "kind": "title", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q011", "text": "Fix consumer lag on the orders queue by scaling consumers", "kind": "title", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q012", "text": "Rotate an expired payment-gateway API key", "kind": "title", "intent": "find", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q013", "text": "recover orders-worker from out of memory kills", "kind": "title", "intent": "find", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q014", "text": "orders-worker killed for memory during the month-end batch", "kind": "title", "intent": "find", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": []}
+{"id": "q015", "text": "Consumer lag on the orders queue after worker restarts", "kind": "title", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-011"], "sop": []}
+{"id": "q016", "text": "redis", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q017", "text": "orders-cache", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q018", "text": "postgres connection pool", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q019", "text": "payment-gateway api key", "kind": "service", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q020", "text": "orders-worker memory", "kind": "service", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q021", "text": "psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q022", "text": "PoolTimeout", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q023", "text": "redis.exceptions.ConnectionError: Error 111 connecting to cache:6379. Connection refused.", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q024", "text": "config error: PAYMENT_GATEWAY_URL is not set", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q025", "text": "CrashLoopBackOff", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q026", "text": "consumer group orders-worker lag=48211 on topic orders exceeds threshold=10000", "kind": "error", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q027", "text": "payment-gateway returned 401 Unauthorized: api key expired", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q028", "text": "orders-worker container killed: OOMKilled (exit code 137)", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q029", "text": "OOMKilled", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q030", "text": "checkout returned 503 because the api ran out of database connections", "kind": "description", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q031", "text": "the time checkout got slow at night because the cache pod was evicted", "kind": "description", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": []}
+{"id": "q032", "text": "queue backed up because calls to the payment provider were slow", "kind": "description", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-003"], "sop": []}
+{"id": "q033", "text": "lag built up after the worker pods restarted", "kind": "description", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-011"], "sop": []}
+{"id": "q034", "text": "a deploy dropped a config value and the api kept restarting", "kind": "description", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q035", "text": "card payments failing because the gateway key ran out", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q036", "text": "the month end batch made the worker run out of memory", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q037", "text": "a slow sales report held all the db connections", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q038", "text": "[FIRING:1] OrdersDbPoolExhausted orders-api critical", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q039", "text": "alertname=OrderQueueConsumerLagHigh service=orders-worker severity=warning", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q040", "text": "[FIRING:1] OrdersApiHighLatency orders-api", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q041", "text": "[FIRING:1] OrdersApiCrashLooping orders-api critical", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q042", "text": "[FIRING:1] PaymentAuthFailures payment-gateway critical", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q043", "text": "[FIRING:2] OrdersWorkerOOMKilled orders-worker warning", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q044", "text": "Traceback (most recent call last):\n  File \"/app/orders/db.py\", line 88, in get_conn\n    conn = pool.getconn(timeout=30)\npsycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec", "kind": "stack_trace", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q045", "text": "Exception in thread \"main\" redis.clients.jedis.exceptions.JedisConnectionException: Connection refused\n\tat redis.clients.jedis.Connection.connect(Connection.java:204)", "kind": "stack_trace", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q046", "text": "2026-10-20T03:14:07.123Z ERROR [orders-worker] container killed: OOMKilled (exit code 137)\n2026-10-20T03:14:09.001Z WARN  [orders-worker] restarting, attempt 4", "kind": "stack_trace", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q047", "text": "2026-05-02T19:41:12Z ERROR [orders-api] payment-gateway returned 401 Unauthorized: api key expired", "kind": "stack_trace", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q048", "text": "2026-03-11T10:02:44Z FATAL [orders-api] config error: PAYMENT_GATEWAY_URL is not set\n2026-03-11T10:02:45Z INFO  [kubelet] Back-off restarting failed container orders-api", "kind": "stack_trace", "intent": "suggest", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q049", "text": "why did the orders db pool run out of connections?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": []}
+{"id": "q050", "text": "what was the root cause of the June db pool outage?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-014"], "sop": []}
+{"id": "q051", "text": "what happened with the cache outage last month?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-031"], "sop": []}
+{"id": "q052", "text": "why did consumer lag build up after the flash sale?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": []}
+{"id": "q053", "text": "what caused the crash loop after the deploy?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": []}
+{"id": "q054", "text": "why did slow payment calls cause queue lag?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-003"], "sop": []}
+{"id": "q055", "text": "what was the customer impact of the payment key expiry?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": []}
+{"id": "q056", "text": "has the worker been OOMKilled before? what caused it?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": []}
+{"id": "q057", "text": "why did lag grow after the worker restarts?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2026-011"], "sop": []}
+{"id": "q058", "text": "how do I raise the database pool limit?", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q059", "text": "steps for db pool", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q060", "text": "steps to recover orders-api when redis is down", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-CACHE-001"]}
+{"id": "q061", "text": "how can we roll back a bad config deploy", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q062", "text": "what should I do when consumer lag is high", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q063", "text": "how do I rotate the payment gateway key?", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q064", "text": "how do I recover the worker after OOM kills?", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q065", "text": "restart the cache safely", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-CACHE-001"]}
+{"id": "q066", "text": "ok, what are the steps?", "kind": "follow_up", "intent": "ask_sop", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q067", "text": "rollback?", "kind": "follow_up", "intent": "ask_sop", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q068", "text": "and why did it happen?", "kind": "follow_up", "intent": "ask_rca", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q069", "text": "help", "kind": "vague", "intent": "unclear", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q070", "text": "hi", "kind": "vague", "intent": "unclear", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q071", "text": "something is wrong", "kind": "vague", "intent": "troubleshoot", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q072", "text": "can you give me commands to solve this now?", "kind": "vague", "intent": "troubleshoot", "lane": null, "origin": "none", "rca": [], "sop": []}
+{"id": "q073", "text": "kafka consumer lag runbook", "kind": "ambiguous", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q074", "text": "roll back orders-api deploy", "kind": "ambiguous", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q075", "text": "how do I bake sourdough bread", "kind": "no_answer", "intent": "ask_sop", "lane": "sop", "origin": "none", "rca": [], "sop": []}
+{"id": "q076", "text": "configure SSO for the HR portal", "kind": "no_answer", "intent": "ask_sop", "lane": "sop", "origin": "none", "rca": [], "sop": []}
+{"id": "q077", "text": "OSError: [Errno 28] No space left on device: '/var/lib/shoplite/tmp/receipt-8812.pdf'", "kind": "no_answer", "intent": "suggest", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q078", "text": "[FIRING:1] OrdersApiDiskFull orders-api critical", "kind": "no_answer", "intent": "suggest", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q079", "text": "certificate has expired for mail.shop.internal", "kind": "no_answer", "intent": "suggest", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q080", "text": "why did the HR portal SSO fail last week?", "kind": "no_answer", "intent": "ask_rca", "lane": "rca", "origin": "none", "rca": [], "sop": []}
+{"id": "q081", "text": "what caused the office wifi outage?", "kind": "no_answer", "intent": "ask_rca", "lane": "rca", "origin": "none", "rca": [], "sop": []}
+{"id": "q082", "text": "lamp ocean violin", "kind": "no_answer", "intent": "find", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q083", "text": "quarterly marketing budget", "kind": "no_answer", "intent": "find", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q084", "text": "orders api 503s this morning, db connections maxed out", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q085", "text": "pool exhausted again on orders, what did we do last time", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q086", "text": "redis restart notes from 2024", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q087", "text": "cache outage postmortem notes", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q088", "text": "flash sale orders delayed, kafka lag huge", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q089", "text": "how to handle consumer lag on the orders queue", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q090", "text": "sev1 orders down after deploy", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q091", "text": "crashloop runbook v2", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q092", "text": "checkout 401s tonight from the psp", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q093", "text": "payments slow and failing after key rotation", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": ["SOP-B-A7F0F4"]}
+{"id": "q094", "text": "worker oom quick fix", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q095", "text": "month end oom on orders worker", "kind": "description", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q096", "text": "order-queue", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q097", "text": "kafka", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q098", "text": "orders-api deploy", "kind": "service", "intent": "find", "lane": "both", "origin": "greenfield", "rca": ["RCA-2026-007"], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q099", "text": "Orders API 503s in June, what happened and how to fix it", "kind": "title", "intent": "find", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q100", "text": "orders db connections runbook", "kind": "title", "intent": "find", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q101", "text": "checkout payments failing after the payment api key expired", "kind": "title", "intent": "find", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-A2A43E"], "sop": []}
+{"id": "q102", "text": "couldn't get a connection after 30 sec from the pool", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q103", "text": "too many clients already", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q104", "text": "Connection refused connecting to cache:6379", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-031"], "sop": ["SOP-CACHE-001"]}
+{"id": "q105", "text": "exit code 137 on orders-worker", "kind": "error", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q106", "text": "OrdersDbPoolExhausted firing on orders-api since 09:12", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": ["SOP-DB-001"]}
+{"id": "q107", "text": "OrderQueueConsumerLagHigh again, lag 48k", "kind": "alert", "intent": "suggest", "lane": "both", "origin": "brownfield", "rca": ["RCA-2025-022"], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q108", "text": "what happened with the orders api 503s in june?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "brownfield", "rca": ["RCA-2025-014"], "sop": []}
+{"id": "q109", "text": "why does the worker get killed at month end?", "kind": "chat_rca", "intent": "ask_rca", "lane": "rca", "origin": "brownfield", "rca": ["RCA-B-8BF782"], "sop": []}
+{"id": "q110", "text": "quick fix for worker OOM", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-B-CBA1A4"]}
+{"id": "q111", "text": "how to free up db connections on orders-api", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "brownfield", "rca": [], "sop": ["SOP-DB-001"]}
+{"id": "q112", "text": "steps to roll back a crash looping deploy", "kind": "chat_sop", "intent": "ask_sop", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-DEPLOY-002", "SOP-DEPLOY-001"]}
+{"id": "q113", "text": "orders queue lag procedure", "kind": "ambiguous", "intent": "find", "lane": "sop", "origin": "greenfield", "rca": [], "sop": ["SOP-QUEUE-002", "SOP-QUEUE-001"]}
+{"id": "q114", "text": "consumer lag incident", "kind": "ambiguous", "intent": "find", "lane": "rca", "origin": "greenfield", "rca": ["RCA-2025-022"], "sop": []}
+{"id": "q115", "text": "ssl certificate renewal for the website", "kind": "no_answer", "intent": "find", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q116", "text": "dns outage on the mail server", "kind": "no_answer", "intent": "find", "lane": "both", "origin": "none", "rca": [], "sop": []}
+{"id": "q117", "text": "how do I onboard a new laptop", "kind": "no_answer", "intent": "ask_sop", "lane": "sop", "origin": "none", "rca": [], "sop": []}
+{"id": "q118", "text": "kafka broker disk is 95% full on broker-3", "kind": "no_answer", "intent": "suggest", "lane": "both", "origin": "none", "rca": [], "sop": []}

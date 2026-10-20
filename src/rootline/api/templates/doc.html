@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.doc_id }} · {{ doc.title }}{% endblock %}
+{% block body %}
+<h1>[{{ doc.doc_type | upper }}] {{ doc.doc_id }} v{{ doc.version }} · {{ doc.title }}</h1>
+<p class="muted">{{ doc.origin }} · {{ doc.status }}
+{% if doc.effective_date %} · updated {{ doc.effective_date }}{% endif %}
+{% if doc.services %} · {{ doc.services | join(", ") }}{% endif %}
+{% if doc.needs_review %} · not reviewed yet{% endif %}
+{% if not doc.verified %} · not verified against its source{% endif %}</p>
+
+{% if doc.steps %}
+<h2 id="sop-steps"><a href="#sop-steps">Steps</a></h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Instruction</th><th>Command</th><th>Expect</th></tr>
+{% for step in doc.steps %}
+<tr id="step-{{ step.ordinal }}"><td>{{ step.ordinal }}</td><td>{{ step.instruction }}</td>
+<td>{% if step.command %}<code>{{ step.command }}</code>{% endif %}</td><td>{{ step.expect or "" }}</td></tr>
+{% endfor %}
+</table></div>
+{% endif %}
+{% if doc.rollback %}
+<h2 id="sop-rollback"><a href="#sop-rollback">Rollback</a></h2>
+<div class="scroll"><table>
+<tr><th>#</th><th>Instruction</th><th>Command</th><th>Expect</th></tr>
+{% for step in doc.rollback %}
+<tr><td>{{ step.ordinal }}</td><td>{{ step.instruction }}</td>
+<td>{% if step.command %}<code>{{ step.command }}</code>{% endif %}</td><td>{{ step.expect or "" }}</td></tr>
+{% endfor %}
+</table></div>
+{% endif %}
+
+{% for section in sections %}
+<h2 id="{{ section.anchor }}"><a href="#{{ section.anchor }}">{{ section.name }}</a></h2>
+<pre>{{ section.text }}</pre>
+{% endfor %}
+{% endblock %}

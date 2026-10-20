@@ -1,0 +1,7 @@
+name: Bad config deploy, crash looping
+proves: versions and freshness, the current SOP comes first and the old one is marked superseded
+fault: bad_config_deploy
+entry: chat
+steps:
+  - say: orders-api keeps crash looping after the deploy
+    expect: {contains: [SOP-DEPLOY-002, RCA-2026-007]}

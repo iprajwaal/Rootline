@@ -19,6 +19,7 @@ from rootline.agent.troubleshoot import AskConclusion, AskTools, agent_asker, co
 from rootline.agent.understand import Understander, intent_asker
 from rootline.config import Settings
 from rootline.ingest.analysis import Analyzer
+from rootline.ingest.embedding import Embedder
 from rootline.llm.structured import LLMUnavailable, build_llm
 
 RCA_QUESTIONS = [
@@ -30,7 +31,7 @@ RCA_QUESTIONS = [
     "why did consumer lag build up after the flash sale?",
     "what caused the crash loop after the deploy?",
 ]
-CITE = re.compile(r"\[\\\[(\d+)\\\]\]\(http://rootline\.test/docs/(RCA-[\w-]+)\)")
+CITE = re.compile(r"\[\\\[(\d+)\\\]\]\(http://rootline\.test/docs/(RCA-[\w-]+)#[\w-]+\)")
 SOURCE = re.compile(r"^(\d+)\. \[\\\[RCA\\\] (RCA-[\w-]+)\]", re.MULTILINE)
 
 
@@ -43,6 +44,7 @@ def make_graph(
     ask_draft: AskDraft | None = None,
     ask_agent: AskTools | None = None,
     ask_conclusion: AskConclusion | None = None,
+    embedder: Embedder | None = None,
 ) -> Graph:
     llm = build_llm(settings, lambda call: None)
     catalog = analyzer.catalog
@@ -54,7 +56,7 @@ def make_graph(
     )
     return build_graph(
         Understander(catalog, intent_asker(llm)),
-        Knowledge(search_db_url, analyzer.embedder, catalog),
+        Knowledge(search_db_url, embedder or analyzer.embedder, catalog),
         Presenter("http://rootline.test", 365, today=lambda: date(2026, 10, 20)),
         Writers(
             ask_answer or answer_asker(llm),
@@ -215,7 +217,7 @@ def test_rca_question_without_the_llm_shows_sections_word_for_word(
     text = reply(state)
 
     assert text.startswith("The answer model is not available")
-    assert "[\\[RCA\\] RCA-2025-014](http://rootline.test/docs/RCA-2025-014)" in text
+    assert "[\\[RCA\\] RCA-2025-014](http://rootline.test/docs/RCA-2025-014#" in text
     quoted = [
         re.sub(r"\\(.)", r"\1", line[2:]) for line in text.splitlines() if line.startswith("> ")
     ]
@@ -295,3 +297,17 @@ def test_steps_after_an_alert_come_from_the_suggested_sop(chat: Chat) -> None:
     text = reply(chat.say("show the steps"))
 
     assert text.startswith("**\\[SOP\\] SOP-DB-001 · v1**")
+
+
+def test_an_unclear_title_naming_a_service_gets_the_closest_documents(graph: Graph) -> None:
+    state = ask(graph, "Orders API outage from exhausted database connection pool")
+
+    assert state["understanding"].intent == "unclear"
+    assert [s.node for s in state["trace"]][-1] == "find"
+    assert "RCA-2025-014" in reply(state)
+
+
+def test_a_how_or_why_split_is_still_asked_back(graph: Graph) -> None:
+    state = ask(graph, "why does the pool keep running out and how do I fix it?")
+
+    assert reply(state).startswith("Understood as unclear")

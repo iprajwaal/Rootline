@@ -1,0 +1,6 @@
+name: Redis down, seen as latency on orders-api
+proves: the symptom is not the cause, the latency alert leads to the Redis RCA and SOP
+fault: cache_down
+entry: alert
+steps:
+  - expect: {contains: [RCA-2025-031, SOP-CACHE-001], llm_calls_max: 0}
