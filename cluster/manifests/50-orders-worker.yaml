@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: shop
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: orders-worker}}
+  template:
+    metadata: {labels: {app: orders-worker}}
+    spec:
+      containers:
+        - name: orders-worker
+          image: shop-orders:dev
+          imagePullPolicy: Never
+          command: [python, worker.py]
+          envFrom: [{configMapRef: {name: orders-config}}]
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 512Mi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic
+  namespace: shop
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: traffic}}
+  template:
+    metadata: {labels: {app: traffic}}
+    spec:
+      containers:
+        - name: traffic
+          image: shop-orders:dev
+          imagePullPolicy: Never
+          command: [python, traffic.py]
+          resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {memory: 128Mi}}

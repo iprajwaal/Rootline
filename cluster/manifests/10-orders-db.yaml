@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-db
+  namespace: shop
+spec:
+  selector: {app: orders-db}
+  ports: [{port: 5432}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: orders-db
+  namespace: shop
+spec:
+  serviceName: orders-db
+  replicas: 1
+  selector: {matchLabels: {app: orders-db}}
+  template:
+    metadata: {labels: {app: orders-db}}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16.4-alpine
+          env:
+            - {name: POSTGRES_USER, value: shop}
+            - {name: POSTGRES_PASSWORD, value: shop}
+            - {name: POSTGRES_DB, value: orders}
+          ports: [{containerPort: 5432}]
+          readinessProbe:
+            exec: {command: [pg_isready, -U, shop, -d, orders]}
+            periodSeconds: 5
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {memory: 512Mi}}
