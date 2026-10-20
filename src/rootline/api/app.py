@@ -14,6 +14,7 @@ from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
 from rootline.llm.ledger import REQUEST_ID
+from rootline.retrieval.documents import Document, read_document
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
 
@@ -94,6 +95,15 @@ def search(
 ) -> SearchResponse:
     with psycopg.connect(settings.database_url) as conn:
         return Searcher(conn, analyzer.embedder, analyzer.catalog.services).search(q)
+
+
+@app.get("/docs/{doc_id}")
+def read_doc(doc_id: str, settings: SettingsDep) -> Document:
+    with psycopg.connect(settings.database_url) as conn:
+        found = read_document(conn, doc_id.upper())
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"no document {doc_id}")
+    return found
 
 
 @app.post("/suggest")

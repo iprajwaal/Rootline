@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "text": "Every pod had all 20 pool connections in use, and most of them were running the same reporting query.",
+      "sources": [
+        1,
+        3
+      ]
+    },
+    {
+      "text": "The sales report query held pool connections for up to 90 seconds with no statement timeout.",
+      "sources": [
+        4
+      ]
+    },
+    {
+      "text": "Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout.",
+      "sources": [
+        4
+      ]
+    }
+  ]
+}

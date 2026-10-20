@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "text": "The deploy did not mount the new config map, so PAYMENT_GATEWAY_URL was missing and the app exited on start.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "Neither CI nor the readiness probe checked for required config, so the bad revision reached every pod.",
+      "sources": [
+        2
+      ]
+    }
+  ]
+}

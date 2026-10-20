@@ -9,7 +9,9 @@ from rootline.agent.understand import Understanding
 
 
 class Step(BaseModel):
+    request_id: str
     node: str
+    args: dict[str, str | int | float]
     detail: str
     ms: float
     llm_calls: int = 0
