@@ -256,18 +256,6 @@ The reasoning and the evidence behind each are in [DESIGN.md](DESIGN.md).
 - Tested on Docker Desktop for macOS. The cluster reaches Rootline through `host.docker.internal`,
   which Docker on Linux doesn't provide by default.
 
-## Deliverables
-
-| | Where |
-|---|---|
-| One command (Docker) | `docker compose up -d --build` starts Rootline; `make cluster` starts the shop it works on (see Quick start) |
-| Setup, architecture, decisions, limitations | this README |
-| Ingestion tests: repeated and concurrent runs, no duplicates | [`tests/test_ingest_idempotency.py`](tests/test_ingest_idempotency.py) (twice, 8 parallel processes, edit, delete), [`tests/test_duplicates.py`](tests/test_duplicates.py) |
-| Isolation evidence | [`tests/test_hardening.py`](tests/test_hardening.py): `test_every_query_keeps_each_list_to_its_own_type`, `test_every_chunk_sits_in_its_own_type_partition`, canary scans. Wrong-type rate 0.00 in the eval report |
-| Eval scripts and raw outputs | [`src/rootline/eval/`](src/rootline/eval), [`eval/queries/`](eval/queries), [`eval/runs/`](eval/runs) (raw `.jsonl` + `report.md`, e.g. [the latest dev report](eval/runs/20261020T124924Z-dev/report.md)), [`scenarios/`](scenarios), [`scenarios/runs/`](scenarios/runs) |
-| DESIGN.md | [DESIGN.md](DESIGN.md) |
-| What we cut, what we'd do next | [DESIGN.md, "What I cut, and what I'd do next"](DESIGN.md#what-i-cut-and-what-id-do-next) |
-
 ## More
 
 **Tests and eval.** Needs [uv](https://docs.astral.sh/uv/).
