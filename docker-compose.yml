@@ -65,8 +65,9 @@ services:
     environment:
       DATABASE_URL: postgresql://rootline:rootline@postgres:5432/rootline
       SHOPLITE_URL: http://shoplite:8080
-      # SHOP_MODE=k8s make demo points the steps at the kind cluster instead of ShopLite.
-      SHOP_MODE: ${SHOP_MODE:-shoplite}
+      # Checks and fixes go to the kind cluster from `make cluster`. SHOP_MODE=shoplite uses the
+      # simulated shop instead, which the scenario runner needs.
+      SHOP_MODE: ${SHOP_MODE:-k8s}
       KUBE_HEALTH_URL: http://host.docker.internal:30080/health
       KUBECONFIG: /app/cluster/.kube/config
       KUBE_CONTEXT: reader

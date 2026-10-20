@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "text": "A new sales report endpoint held connections while it ran slow queries.",
+      "sources": [
+        2
+      ]
+    },
+    {
+      "text": "The new sales report endpoint held connections for 40 to 90 seconds per request.",
+      "sources": [
+        3
+      ]
+    },
+    {
+      "text": "The sales report query held pool connections for up to 90 seconds with no statement timeout.",
+      "sources": [
+        7
+      ]
+    },
+    {
+      "text": "Reports and checkout shared one pool of 20 connections per pod, so reports could starve checkout.",
+      "sources": [
+        7
+      ]
+    }
+  ]
+}

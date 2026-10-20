@@ -23,8 +23,8 @@ corpus:
 up:
 	docker compose up --build
 
-# Adds the ShopLite sandbox, so approved SOP steps run against a live service. Runs in the
-# background, so the same terminal can break something with `make chaos`.
+# Adds the simulated ShopLite shop, in the background. The agent acts on it only when started
+# with SHOP_MODE=shoplite, which the scenario runner needs.
 demo:
 	docker compose --profile demo up -d --build
 
@@ -50,7 +50,7 @@ eval:
 experiments:
 	uv run python -m rootline.eval.experiments
 
-# Scenarios 1-8 and 1b against the running stack (make demo first)
+# Scenarios s1 to s9 and s1b against ShopLite (SHOP_MODE=shoplite make demo first)
 scenarios:
 	uv run python -m rootline.scenarios
 
@@ -75,7 +75,7 @@ cluster-down:
 	kind delete cluster --name shop
 
 # Real faults on the kind shop: db_pool_exhausted, disk_full, cache_down, queue_consumer_lag,
-# bad_config_deploy
+# bad_config_deploy, db_read_only
 chaos-k8s:
 	./cluster/chaos.sh $(FAULT)
 
