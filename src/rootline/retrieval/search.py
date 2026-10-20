@@ -11,6 +11,7 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel
 
 from rootline.catalog import named_services
+from rootline.core.text import printable
 from rootline.ingest.embedding import Embedder, EmbeddingUnavailable, vector_literal
 
 log = logging.getLogger(__name__)
@@ -42,8 +43,9 @@ SNIPPET_CHARS = 220
 SUPERSEDED_WEIGHT = 0.8
 SERVICE_WEIGHT = 1.15
 # Measured on dev queries with text-embedding-005: the right document scores 0.62 to 0.73,
-# unrelated queries at most 0.54. Meaning alone must clear the middle of the right ones.
-MIN_SIMILARITY = 0.66
+# unrelated queries at most 0.54. Picked by the dev-only sweep in `make experiments`; the
+# plateau around it is flat, so small moves change one query at most.
+MIN_SIMILARITY = 0.64
 # Accepted with less similarity when at least two words or a named service also match.
 MIN_SIMILARITY_WITH_EVIDENCE = 0.58
 
@@ -142,9 +144,14 @@ class Searcher:
     conn: psycopg.Connection[Any]
     embedder: Embedder
     services: dict[str, list[str]]
+    # The eval switches these to compare keyword, vector and hybrid search and to sweep the
+    # thresholds; the app keeps both methods and the tuned values.
+    methods: frozenset[str] = frozenset({"keyword", "vector"})
+    floors: tuple[float, float] = (MIN_SIMILARITY, MIN_SIMILARITY_WITH_EVIDENCE)
 
     def search(self, query: str) -> SearchResponse:
         started = time.perf_counter()
+        query = printable(query)
         response = self.by_id(query) or self.by_title(query) or self.hybrid(query)
         elapsed = round((time.perf_counter() - started) * 1000, 1)
         return response.model_copy(update={"latency_ms": elapsed})
@@ -196,11 +203,12 @@ class Searcher:
         return response.model_copy(update={"did_you_mean": hits[1:]})
 
     def hybrid(self, query: str) -> SearchResponse:
-        try:
-            vector: str | None = vector_literal(self.embedder.query(query))
-        except EmbeddingUnavailable as error:
-            log.warning("search by meaning skipped error=%s", error)
-            vector = None
+        vector: str | None = None
+        if "vector" in self.methods:
+            try:
+                vector = vector_literal(self.embedder.query(query))
+            except EmbeddingUnavailable as error:
+                log.warning("search by meaning skipped error=%s", error)
         words = dict.fromkeys(WORD.findall(query.lower()))
         terms = [w for w in words if len(w) >= 3 and w not in STOPWORDS]
         rare = {t.lower() for t in TOKEN.findall(query) if IDENTIFIER.search(t)}
@@ -216,7 +224,7 @@ class Searcher:
     def lane(self, lane: Lane, vector: str | None, evidence: "Evidence") -> LaneResult:
         semantic = self.rows(SEMANTIC, {"v": vector, "t": lane, "n": CANDIDATES}) if vector else []
         lexical: list[dict[str, Any]] = []
-        if evidence.terms:
+        if evidence.terms and "keyword" in self.methods:
             query = " | ".join(evidence.terms)
             lexical = self.rows(LEXICAL, {"q": query, "t": lane, "n": CANDIDATES})
 
@@ -235,7 +243,8 @@ class Searcher:
             row = chunks[chunk_id]
             if row["doc_id"] in found:
                 continue
-            match = judge(row, score, similarity.get(chunk_id, 0.0) if vector else None, evidence)
+            meaning = similarity.get(chunk_id, 0.0) if vector else None
+            match = judge(row, score, meaning, evidence, self.floors)
             if match:
                 found[row["doc_id"]] = match
 
@@ -315,8 +324,13 @@ class Evidence:
 
 
 def judge(
-    row: dict[str, Any], score: float, similarity: float | None, evidence: Evidence
+    row: dict[str, Any],
+    score: float,
+    similarity: float | None,
+    evidence: Evidence,
+    floors: tuple[float, float],
 ) -> Match | None:
+    alone, with_evidence = floors
     body = row["body"].lower()
     matched = [t for t in evidence.terms if re.search(rf"\b{re.escape(t)}", body)]
     services = sorted(evidence.services & set(row["services"]))
@@ -326,9 +340,7 @@ def judge(
         # Keywords only: two matching words, a rare identifier or a named service plus a word.
         if support < 2:
             return None
-    elif similarity < MIN_SIMILARITY and not (
-        support >= 2 and similarity >= MIN_SIMILARITY_WITH_EVIDENCE
-    ):
+    elif similarity < alone and not (support >= 2 and similarity >= with_evidence):
         return None
     if services:
         score *= SERVICE_WEIGHT

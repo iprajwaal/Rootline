@@ -3,15 +3,16 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from functools import cache
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import psycopg
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from rootline.api.review_page import review_page
 from rootline.config import Settings
 from rootline.core.context import REQUEST_ID
 from rootline.core.logs import configure_logging
@@ -28,10 +29,13 @@ from rootline.incidents import (
 from rootline.ingest.analysis import Analyzer
 from rootline.ingest.factory import build_analyzer, build_store
 from rootline.ingest.parsing import UnsupportedFormat
-from rootline.retrieval.documents import Document, read_document
+from rootline.ops import ops_report
+from rootline.retrieval.documents import Document, read_document, sections
 from rootline.retrieval.search import Searcher, SearchResponse
 from rootline.retrieval.suggest import Suggester, SuggestResponse
-from rootline.review import approve, drafts, other_reviews, reject
+from rootline.review import approve, drafts, fix_type, mark_reviewed, open_items, reject
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
 @asynccontextmanager
@@ -126,13 +130,17 @@ def search(
         return Searcher(conn, analyzer.embedder, analyzer.catalog.services).search(q)
 
 
-@app.get("/docs/{doc_id}")
-def read_doc(doc_id: str, settings: SettingsDep) -> Document:
+@app.get("/docs/{doc_id}", response_model=None)
+def read_doc(doc_id: str, request: Request, settings: SettingsDep) -> Document | HTMLResponse:
     with psycopg.connect(settings.database_url) as conn:
         found = read_document(conn, doc_id.upper())
-    if found is None:
-        raise HTTPException(status_code=404, detail=f"no document {doc_id}")
-    return found
+        if found is None:
+            raise HTTPException(status_code=404, detail=f"no document {doc_id}")
+        # Chat citations open in a browser and get the page; API clients get JSON.
+        if "text/html" not in request.headers.get("accept", ""):
+            return found
+        parts = sections(conn, found)
+    return templates.TemplateResponse(request, "doc.html", {"doc": found, "sections": parts})
 
 
 @app.post("/suggest")
@@ -173,10 +181,20 @@ def open_incident_chat(incident_id: int, settings: SettingsDep) -> dict[str, str
     return {"thread_id": thread_id}
 
 
-@app.get("/review", response_class=HTMLResponse)
-def review(settings: SettingsDep) -> HTMLResponse:
+@app.get("/ops", response_class=HTMLResponse)
+def ops(
+    request: Request, settings: SettingsDep, days: Annotated[int, Query(ge=1, le=90)] = 7
+) -> HTMLResponse:
     with psycopg.connect(settings.database_url) as conn:
-        return HTMLResponse(review_page(drafts(conn), other_reviews(conn)))
+        report = ops_report(conn, days)
+    return templates.TemplateResponse(request, "ops.html", {"report": report})
+
+
+@app.get("/review", response_class=HTMLResponse)
+def review(request: Request, settings: SettingsDep) -> HTMLResponse:
+    with psycopg.connect(settings.database_url) as conn:
+        context = {"drafts": drafts(conn), "items": open_items(conn)}
+    return templates.TemplateResponse(request, "review.html", context)
 
 
 @app.post("/review/{review_id}/approve")
@@ -185,6 +203,24 @@ def approve_draft(review_id: int, settings: SettingsDep, analyzer: AnalyzerDep) 
         outcome = approve(conn, build_store(conn, settings, analyzer, "reviewer"), review_id)
     if outcome is None:
         raise HTTPException(status_code=404, detail=f"no open draft {review_id}")
+    return RedirectResponse("/review", status_code=303)
+
+
+@app.post("/review/{review_id}/type")
+def set_type(
+    review_id: int, doc_type: Annotated[Literal["rca", "sop"], Form()], settings: SettingsDep
+) -> RedirectResponse:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        if not fix_type(conn, review_id, doc_type):
+            raise HTTPException(status_code=404, detail=f"no open type review {review_id}")
+    return RedirectResponse("/review", status_code=303)
+
+
+@app.post("/review/{review_id}/done")
+def review_done(review_id: int, settings: SettingsDep) -> RedirectResponse:
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
+        if not mark_reviewed(conn, review_id):
+            raise HTTPException(status_code=404, detail=f"no open review item {review_id}")
     return RedirectResponse("/review", status_code=303)
 
 

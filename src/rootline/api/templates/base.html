@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Rootline{% endblock %}</title>
+<style>
+:root { --bg: #fff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --open: #b42318;
+  --soft: #f6f8fa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --open: #f97066;
+    --soft: #161b22; }
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif;
+  max-width: 1040px; margin: 0 auto; padding: 24px 16px; }
+nav { margin-bottom: 16px; } nav a { margin-right: 16px; }
+a { color: inherit; } h1 { font-size: 22px; } h2 { font-size: 17px; margin-top: 28px; }
+.muted { color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
+.card.open { border-color: var(--open); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left;
+  vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+pre { white-space: pre-wrap; background: var(--soft); padding: 8px; font-size: 13px;
+  max-height: 360px; overflow: auto; }
+code { background: var(--soft); padding: 1px 4px; font-size: 13px; }
+form { display: inline; } button { margin: 4px 8px 4px 0; padding: 6px 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+<nav><a href="/ops">Ops</a><a href="/review">Review</a></nav>
+{% block body %}{% endblock %}
+</body>
+</html>

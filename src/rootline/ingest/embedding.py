@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types
 
 from rootline.core.context import request_id
+from rootline.core.files import write_atomic
 from rootline.llm.ledger import Call, Kind, RecordCall, elapsed_ms
 
 log = logging.getLogger(__name__)
@@ -99,9 +100,9 @@ class Embedder:
 
     def store(self, text: str, task: Task, vector: list[float]) -> None:
         # Stored like the LLM answers and committed, so runs without a key get the same vectors.
-        path = self.path(text, task)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(base64.b64encode(array("f", vector).tobytes()).decode() + "\n")
+        write_atomic(
+            self.path(text, task), base64.b64encode(array("f", vector).tobytes()).decode() + "\n"
+        )
 
     def path(self, text: str, task: Task) -> Path:
         key = hashlib.sha256(f"{task}\n{self.dims}\n{text}".encode()).hexdigest()

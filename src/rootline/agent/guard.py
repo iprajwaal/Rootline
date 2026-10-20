@@ -3,13 +3,13 @@ import unicodedata
 
 from pydantic import BaseModel
 
+from rootline.core.text import CONTROL
 from rootline.ingest.redaction import redact
 
 MAX_BYTES = 20_000
 # A long paste keeps its head and its tail: Java prints the exception first, Python last.
 TAIL_BYTES = 4_000
 INVISIBLE = re.compile("[​-‏‪-‮⁠-⁤﻿]")
-CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 # Flagged and logged only. The text still goes on as plain data, and nothing downstream
 # lets a message run commands or change instructions.
 INJECTION = {

@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check corpus up demo chaos act down
+.PHONY: install lint typecheck test check corpus up demo chaos act down eval experiments
 
 install:
 	uv sync
@@ -40,3 +40,12 @@ act:
 
 down:
 	docker compose --profile demo down
+
+# Runs the dev or the held-out test queries and writes eval/runs/<time>-<split>/report.md
+SPLIT ?= dev
+eval:
+	uv run python -m rootline.eval.runner --split $(SPLIT)
+
+# Search, intent and classification comparisons plus the threshold sweep, on dev only
+experiments:
+	uv run python -m rootline.eval.experiments

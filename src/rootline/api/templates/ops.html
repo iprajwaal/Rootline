@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Rootline ops{% endblock %}
+{% block body %}
+<h1>Ops</h1>
+<p class="muted">The last {{ report.days }} days. Times are wall time per chat turn; cost and
+tokens add up every LLM and embedding call the turn made.</p>
+
+<h2>Requests by kind</h2>
+{% if report.by_kind %}
+<div class="scroll"><table>
+<tr><th>Kind</th><th class="n">Requests</th><th class="n">p50 ms</th><th class="n">p95 ms</th>
+<th class="n">LLM calls</th><th class="n">Input tokens</th><th class="n">Output tokens</th>
+<th class="n">USD per request</th><th class="n">USD total</th><th class="n">Degraded</th></tr>
+{% for row in report.by_kind %}
+<tr><td>{{ row.kind }}</td><td class="n">{{ row.requests }}</td><td class="n">{{ row.p50_ms }}</td>
+<td class="n">{{ row.p95_ms }}</td><td class="n">{{ row.llm_calls }}</td>
+<td class="n">{{ row.input_tokens }}</td><td class="n">{{ row.output_tokens }}</td>
+<td class="n">{{ row.cost_per_request }}</td><td class="n">{{ row.cost_total }}</td>
+<td class="n">{{ row.degraded }}</td></tr>
+{% endfor %}
+</table></div>
+{% else %}<p class="muted">No chat turns yet.</p>{% endif %}
+
+<h2>Model calls by task</h2>
+{% if report.by_task %}
+<div class="scroll"><table>
+<tr><th>Task</th><th class="n">Calls</th><th class="n">From cache</th><th class="n">Failed</th>
+<th class="n">Input tokens</th><th class="n">Output tokens</th><th class="n">USD</th>
+<th class="n">Avg ms</th></tr>
+{% for row in report.by_task %}
+<tr><td>{{ row.task or "unknown" }}</td><td class="n">{{ row.calls }}</td>
+<td class="n">{{ row.cached }}</td><td class="n">{{ row.failed }}</td>
+<td class="n">{{ row.input_tokens }}</td><td class="n">{{ row.output_tokens }}</td>
+<td class="n">{{ row.cost }}</td><td class="n">{{ row.avg_ms if row.avg_ms is not none else "" }}</td></tr>
+{% endfor %}
+</table></div>
+{% else %}<p class="muted">No model calls yet.</p>{% endif %}
+
+<h2>Degraded parts</h2>
+{% if report.degraded %}
+<div class="scroll"><table>
+<tr><th>Task</th><th>Reason</th><th class="n">Calls</th><th>Last seen</th></tr>
+{% for row in report.degraded %}
+<tr><td>{{ row.task }}</td><td>{{ row.reason }}</td><td class="n">{{ row.calls }}</td>
+<td>{{ row.last_seen.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+{% endfor %}
+</table></div>
+{% else %}<p class="muted">Nothing degraded.</p>{% endif %}
+
+<h2>Review backlog</h2>
+{% if report.backlog %}
+<div class="scroll"><table>
+<tr><th>Reason</th><th class="n">Open items</th><th>Oldest</th></tr>
+{% for row in report.backlog %}
+<tr><td>{{ row.reason }}</td><td class="n">{{ row.open_items }}</td>
+<td>{{ row.oldest.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+{% endfor %}
+</table></div>
+<p><a href="/review">Open the review page</a></p>
+{% else %}<p class="muted">Nothing waiting for review.</p>{% endif %}
+{% endblock %}

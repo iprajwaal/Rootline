@@ -2,7 +2,8 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, Protocol
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
@@ -40,6 +41,7 @@ from rootline.core.context import request_scope
 from rootline.core.models import SopStep
 from rootline.llm.ledger import elapsed_ms
 from rootline.llm.structured import LLMUnavailable
+from rootline.ops import RequestLog, Turn
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +58,10 @@ ROUTES = (
 )
 SHOWN_CHARS = 120
 NOTE_CHARS = 300
+
+
+class Node(Protocol):
+    def __call__(self, state: AgentState) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -80,6 +86,7 @@ def build_graph(
     # tells the engineer what to run.
     toolbox = Toolbox(executor, knowledge)
     catalog = knowledge.catalog
+    requests = RequestLog(knowledge.database_url)
 
     def guard_input(state: AgentState) -> dict[str, Any]:
         started = time.perf_counter()
@@ -459,31 +466,52 @@ def build_graph(
             detail = "llm down"
         return text, agent_step(state, "draft", {}, detail, started, llm_calls), focus
 
+    def record(state: AgentState) -> dict[str, Any]:
+        # One row per turn for /ops: what was asked, the path taken, wall time and LLM calls.
+        turn = [s for s in state.get("trace", []) if s.request_id == state["request_id"]]
+        started = turn[0].at if turn else datetime.now(UTC)
+        requests.record(
+            Turn(
+                request_id=state["request_id"],
+                kind=state["understanding"].intent,
+                path=" → ".join(step.node for step in turn),
+                ms=round((datetime.now(UTC) - started).total_seconds() * 1000),
+                llm_calls=sum(step.llm_calls for step in turn),
+            )
+        )
+        return {}
+
+    nodes: dict[str, Node] = {
+        "understand": understand,
+        "find": find,
+        "suggest": suggest,
+        "ask_sop": ask_sop,
+        "ask_rca": ask_rca,
+        "run_step": run_step,
+        "draft": draft,
+        "recheck": recheck,
+        "troubleshoot": troubleshoot,
+        "think": think,
+        "tools": tools,
+        "conclude": conclude,
+        "reply": reply,
+        "record": record,
+    }
     builder = StateGraph(AgentState)
     builder.add_node("guard", guard_input)
-    builder.add_node("understand", understand)
-    builder.add_node("find", find)
-    builder.add_node("suggest", suggest)
-    builder.add_node("ask_sop", ask_sop)
-    builder.add_node("ask_rca", ask_rca)
-    builder.add_node("run_step", run_step)
-    builder.add_node("draft", draft)
-    builder.add_node("recheck", recheck)
-    builder.add_node("troubleshoot", troubleshoot)
-    builder.add_node("think", think)
-    builder.add_node("tools", tools)
-    builder.add_node("conclude", conclude)
-    builder.add_node("reply", reply)
+    for name, node in nodes.items():
+        builder.add_node(name, scoped(node))
     builder.add_edge(START, "guard")
     builder.add_edge("guard", "understand")
     builder.add_conditional_edges("understand", route, [*ROUTES, "reply"])
-    for node in ("suggest", "recheck"):
-        builder.add_conditional_edges(node, after_handoff, ["troubleshoot", END])
-    for node in ("troubleshoot", "think"):
-        builder.add_conditional_edges(node, after_think, ["tools", "conclude", END])
+    for name in ("suggest", "recheck"):
+        builder.add_conditional_edges(name, after_handoff, ["troubleshoot", "record"])
+    for name in ("troubleshoot", "think"):
+        builder.add_conditional_edges(name, after_think, ["tools", "conclude", "record"])
     builder.add_edge("tools", "think")
-    for node in ("find", "ask_sop", "ask_rca", "run_step", "draft", "conclude", "reply"):
-        builder.add_edge(node, END)
+    for name in ("find", "ask_sop", "ask_rca", "run_step", "draft", "conclude", "reply"):
+        builder.add_edge(name, "record")
+    builder.add_edge("record", END)
     # With Langfuse keys set, every node run and the LLM calls inside it land in one trace.
     return builder.compile().with_config(callbacks=tracing)
 
@@ -497,16 +525,31 @@ def route(state: AgentState) -> str:
     investigating = bool(focus.plan) and not focus.sop
     if found.intent in ("ask_sop", "unclear") and investigating and not topical(found):
         return "troubleshoot"
+    # Unsure what is asked, but it names a service, error or alert and one reading is a
+    # lookup: the closest documents serve every reading better than a question back. A
+    # how-or-why split has no lookup reading and is still asked.
+    lookups = "find" in found.alternatives or set(found.alternatives) <= {"find", "suggest"}
+    if found.intent == "unclear" and lookups and topical(found):
+        return "find"
     return found.intent if found.intent in ROUTES else "reply"
 
 
+def scoped(node: Node) -> Node:
+    # Every call a node makes, embeddings included, is logged under the turn's request ID.
+    def run(state: AgentState) -> dict[str, Any]:
+        with request_scope(state["request_id"]):
+            return node(state)
+
+    return run
+
+
 def after_handoff(state: AgentState) -> str:
-    return END if answered(state) else "troubleshoot"
+    return "record" if answered(state) else "troubleshoot"
 
 
 def after_think(state: AgentState) -> str:
     if answered(state):
-        return END
+        return "record"
     return "tools" if pending(state["work"]) else "conclude"
 
 

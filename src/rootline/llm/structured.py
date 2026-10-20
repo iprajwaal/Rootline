@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from rootline.config import Settings
 from rootline.core.context import request_id
+from rootline.core.files import write_atomic
 from rootline.llm.ledger import Call, Kind, LedgerCallback, Prices, RecordCall, elapsed_ms
 from rootline.llm.tracing import tracing_callbacks
 
@@ -56,8 +57,7 @@ class StructuredLLM:
         if not isinstance(result, schema):
             raise LLMUnavailable(f"{self.model} returned {type(result).__name__}")
 
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(result.model_dump_json(indent=2) + "\n")
+        write_atomic(path, result.model_dump_json(indent=2) + "\n")
         return result
 
     def decide(
