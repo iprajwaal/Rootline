@@ -34,7 +34,7 @@ flowchart LR
 
 **Small Walkthrough:** one incident, from the alert to the fix. (just to help how to use)
 
-<a href="https://youtu.be/POJ6e1rO4Xc"><img src="https://img.youtube.com/vi/POJ6e1rO4Xc/mqdefault.jpg" width="220" alt="Rootline walkthrough"></a>
+<a href="https://youtu.be/f3ac9dkjslA"><img src="https://img.youtube.com/vi/f3ac9dkjslA/mqdefault.jpg" width="220" alt="Rootline walkthrough"></a>
 
 
 ## Quick start
